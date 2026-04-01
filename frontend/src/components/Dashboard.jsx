@@ -9,7 +9,7 @@ import TransactionForm  from "./TransactionForm";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-// Fixed: Hardcoded your live Render backend so Vercel never breaks!
+// Hardcoded your live Render backend
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
 const MONTHS = [
@@ -26,16 +26,39 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading]   = useState(true);
 
+  // --- ANTI-CRASH PATCH APPLIED HERE ---
   const fetchData = async () => {
     setLoading(true);
-    const [sumRes, txRes] = await Promise.all([
-      fetch(`${API}/summary?year=${year}&month=${month}`),
-      fetch(`${API}/transactions?year=${year}&month=${month}`),
-    ]);
-    setSummary(await sumRes.json());
-    setTx(await txRes.json());
+    try {
+      const [sumRes, txRes] = await Promise.all([
+        fetch(`${API}/summary?year=${year}&month=${month}`),
+        fetch(`${API}/transactions?year=${year}&month=${month}`),
+      ]);
+      
+      // Check if Render sent back an HTML error page instead of data
+      const contentType = txRes.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const sumData = await sumRes.json();
+        const txData = await txRes.json();
+
+        // If the database complains, show us the error!
+        if (txData.error) alert("Backend Error: " + txData.error);
+        if (sumData.error) alert("Summary Error: " + sumData.error);
+
+        // Safely set the data so the app doesn't crash
+        setSummary(sumData.error ? null : sumData);
+        setTx(Array.isArray(txData) ? txData : []);
+      } else {
+        alert("Render is offline or crashed. Check Render dashboard!");
+        setTx([]);
+      }
+    } catch (e) {
+      alert("Connection Error: " + e.message);
+      setTx([]);
+    }
     setLoading(false);
   };
+  // -------------------------------------
 
   useEffect(() => { fetchData(); }, [month, year]);
 
