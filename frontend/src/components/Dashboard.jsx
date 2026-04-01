@@ -6,6 +6,7 @@ import {
 } from "chart.js";
 import TransactionTable from "./TransactionTable";
 import TransactionForm  from "./TransactionForm";
+import BudgetPlanEditor from "./BudgetPlanEditor";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -15,7 +16,6 @@ const MONTHS = [
   "", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
-
 const SHORT_MONTHS = [
   "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -25,10 +25,11 @@ export default function Dashboard() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year,  setYear]  = useState(now.getFullYear());
-  const [summary, setSummary]   = useState(null);
-  const [transactions, setTx]   = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading]   = useState(true);
+  const [summary, setSummary]     = useState(null);
+  const [transactions, setTx]     = useState([]);
+  const [showForm, setShowForm]   = useState(false);
+  const [showPlan, setShowPlan]   = useState(false);
+  const [loading, setLoading]     = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
@@ -61,11 +62,9 @@ export default function Dashboard() {
   const fmt = (n) =>
     new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
 
-  // Shorter format for mobile cards: GH₵1,200 → ₵1.2k
   const fmtShort = (n) => {
     const v = n ?? 0;
-    if (Math.abs(v) >= 1000)
-      return "₵" + (v / 1000).toFixed(1) + "k";
+    if (Math.abs(v) >= 1000) return "₵" + (v / 1000).toFixed(1) + "k";
     return "₵" + v.toFixed(2);
   };
 
@@ -75,23 +74,26 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-indigo-400 animate-pulse text-lg font-medium">Loading budget…</div>
+        <div className="text-indigo-400 animate-pulse text-lg font-medium">Loading budget...</div>
       </div>
     );
   }
 
   const s = summary || {};
 
+  // ── Cash Flow rows exactly matching the spreadsheet ──────────────────────
+  // Balance = StartBalance + Income - Expenses - Bills - Debts - Savings
+  // Spent   = Expenses + Bills + Debts  (savings NOT included)
   const cashFlowRows = [
     { label: "Start Balance", planned: s.startBalance,              actual: s.startBalance,             neutral: true },
     { label: "Income",        planned: s.income?.planned,           actual: s.income?.actual,           positive: true },
     { label: "Expenses",      planned: s.totalExpenses?.planned,    actual: s.totalExpenses?.actual,    negative: true },
-    { label: "Bills",         planned: s.bills?.planned,            actual: s.bills?.actual,            negative: true, indent: true },
-    { label: "Debts",         planned: s.debts?.planned,            actual: s.debts?.actual,            negative: true, indent: true },
-    { label: "Variable",      planned: s.variableExpenses?.planned, actual: s.variableExpenses?.actual, negative: true, indent: true },
-    { label: "Savings",       planned: s.savings?.planned,          actual: s.savings?.actual,          neutral: true },
+    { label: "↳ Bills",       planned: s.bills?.planned,            actual: s.bills?.actual,            negative: true, indent: true },
+    { label: "↳ Debts",       planned: s.debts?.planned,            actual: s.debts?.actual,            negative: true, indent: true },
+    { label: "↳ Variable",    planned: s.variableExpenses?.planned, actual: s.variableExpenses?.actual, negative: true, indent: true },
+    { label: "Savings",       planned: s.savings?.planned,          actual: s.savings?.actual,          savings: true },
     { label: "Balance",       planned: s.balance?.planned,          actual: s.balance?.actual,          balance: true },
-    { label: "Total Spent",   planned: s.spent?.planned,            actual: s.spent?.actual,            negative: true },
+    { label: "Spent",         planned: s.spent?.planned,            actual: s.spent?.actual,            negative: true },
   ];
 
   const chartData = {
@@ -126,39 +128,45 @@ export default function Dashboard() {
   };
 
   const kpiCards = [
-    { label: "Income",   value: fmt(s.income?.actual),      short: fmtShort(s.income?.actual),   color: "text-green-400",  bg: "from-green-900/20"  },
-    { label: "Spent",    value: fmt(s.spent?.actual),       short: fmtShort(s.spent?.actual),    color: "text-red-400",    bg: "from-red-900/20"    },
-    { label: "Savings",  value: fmt(s.savings?.planned),    short: fmtShort(s.savings?.planned), color: "text-yellow-400", bg: "from-yellow-900/20" },
-    { label: "Balance",  value: fmt(s.balance?.actual),     short: fmtShort(s.balance?.actual),
+    { label: "Income",   value: fmt(s.income?.actual),   short: fmtShort(s.income?.actual),   color: "text-green-400",  bg: "from-green-900/20"  },
+    { label: "Spent",    value: fmt(s.spent?.actual),    short: fmtShort(s.spent?.actual),    color: "text-red-400",    bg: "from-red-900/20"    },
+    { label: "Savings",  value: fmt(s.savings?.actual),  short: fmtShort(s.savings?.actual),  color: "text-yellow-400", bg: "from-yellow-900/20",
+      sub: `of ${fmt(s.savings?.planned)} planned` },
+    { label: "Balance",  value: fmt(s.balance?.actual),  short: fmtShort(s.balance?.actual),
       color: (s.balance?.actual ?? 0) >= 0 ? "text-green-400" : "text-red-400",
-      bg: (s.balance?.actual ?? 0) >= 0 ? "from-green-900/20" : "from-red-900/20" },
+      bg:    (s.balance?.actual ?? 0) >= 0 ? "from-green-900/20" : "from-red-900/20" },
   ];
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans">
-      {/* ── HEADER: stacks cleanly on mobile ── */}
+      {/* ── HEADER ── */}
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 md:px-6 md:py-4">
-        {/* Row 1: logo + Add button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xl">💰</span>
-            <div className="min-w-0">
-              <h1 className="text-lg md:text-2xl font-bold text-indigo-400 tracking-tight leading-tight">
-                Budget Tracker
-              </h1>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-indigo-400 tracking-tight leading-tight">Budget Tracker</h1>
               <p className="text-xs text-gray-500 hidden sm:block">Expected vs. Actual · Monthly View</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white px-3 py-2 md:px-4 rounded-lg text-sm font-medium transition flex-shrink-0 ml-3"
-          >
-            <span className="hidden sm:inline">+ Add Transaction</span>
-            <span className="sm:hidden">+ Add</span>
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+            <button
+              onClick={() => setShowPlan(true)}
+              className="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition border border-gray-600"
+            >
+              <span className="hidden sm:inline">📋 Edit Budget Plan</span>
+              <span className="sm:hidden">📋 Plan</span>
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition"
+            >
+              <span className="hidden sm:inline">+ Add Transaction</span>
+              <span className="sm:hidden">+ Add</span>
+            </button>
+          </div>
         </div>
 
-        {/* Row 2: month / year selectors */}
         <div className="flex items-center gap-2 mt-3">
           <select
             value={month}
@@ -179,30 +187,31 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 md:px-4 py-5 md:py-8 space-y-5 md:space-y-8">
-        {/* ── KPI CARDS: 2×2 grid, compact on mobile ── */}
+
+        {/* ── KPI CARDS ── */}
         <section className="grid grid-cols-2 gap-3">
           {kpiCards.map(card => (
-            <div
-              key={card.label}
-              className={`bg-gradient-to-br ${card.bg} to-gray-900 rounded-xl border border-gray-800 p-4`}
-            >
+            <div key={card.label} className={`bg-gradient-to-br ${card.bg} to-gray-900 rounded-xl border border-gray-800 p-4`}>
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">{card.label}</p>
-              {/* Short value on mobile, full on md+ */}
               <p className={`text-xl md:text-2xl font-bold mt-1 ${card.color} md:hidden`}>{card.short}</p>
               <p className={`text-xl md:text-2xl font-bold mt-1 ${card.color} hidden md:block`}>{card.value}</p>
+              {card.sub && <p className="text-xs text-gray-600 mt-0.5 hidden md:block">{card.sub}</p>}
             </div>
           ))}
         </section>
 
-        {/* ── CASH FLOW TABLE: mobile-friendly card layout ── */}
+        {/* ── CASH FLOW SUMMARY ── */}
         <section className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          <div className="px-4 md:px-6 py-4 border-b border-gray-800">
+          <div className="px-4 md:px-6 py-4 border-b border-gray-800 flex items-center justify-between">
             <h2 className="font-semibold text-gray-200 text-sm md:text-base">
               📊 Cash Flow — {SHORT_MONTHS[month]} {year}
             </h2>
+            <span className="text-xs text-gray-500">
+              Start: <span className="text-gray-300">{fmt(s.startBalance)}</span>
+            </span>
           </div>
 
-          {/* Desktop table (hidden on mobile) */}
+          {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -220,18 +229,23 @@ export default function Dashboard() {
                   const progress = pct(row.actual, row.planned);
                   const isBalance = row.balance;
                   const isIndent  = row.indent;
+                  const isSavings = row.savings;
                   return (
                     <tr key={i} className={`border-b border-gray-800 last:border-0 ${isBalance ? "bg-gray-800/60 font-semibold" : "hover:bg-gray-800/30"}`}>
-                      <td className={`px-6 py-3 ${isIndent ? "pl-10 text-gray-400 text-xs" : "text-gray-200"}`}>{row.label}</td>
+                      <td className={`px-6 py-3 ${isIndent ? "pl-8 text-gray-400 text-xs" : "text-gray-200"}`}>{row.label}</td>
                       <td className="text-right px-6 py-3 text-gray-400">{fmt(row.planned)}</td>
-                      <td className={`text-right px-6 py-3 font-medium ${row.positive ? "text-green-400" : row.negative ? "text-red-300" : isBalance ? ((row.actual ?? 0) >= 0 ? "text-green-400" : "text-red-400") : "text-gray-200"}`}>
-                        {fmt(row.actual)}
-                      </td>
+                      <td className={`text-right px-6 py-3 font-medium ${
+                        row.positive ? "text-green-400"
+                        : row.negative ? "text-red-300"
+                        : isSavings ? "text-yellow-400"
+                        : isBalance ? ((row.actual ?? 0) >= 0 ? "text-green-400" : "text-red-400")
+                        : "text-gray-200"
+                      }`}>{fmt(row.actual)}</td>
                       <td className={`text-right px-6 py-3 text-xs ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-gray-500"}`}>
                         {diff >= 0 ? "+" : ""}{fmt(diff)}
                       </td>
                       <td className="px-6 py-3">
-                        {!row.neutral && !row.balance && row.planned > 0 && (
+                        {!row.neutral && !row.balance && (row.planned ?? 0) > 0 && (
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-gray-700 rounded-full h-1.5">
                               <div className={`h-1.5 rounded-full ${progress >= 100 ? "bg-red-500" : progress >= 75 ? "bg-yellow-500" : "bg-indigo-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} />
@@ -247,45 +261,38 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* Mobile card list (hidden on md+) */}
+          {/* Mobile card list */}
           <div className="md:hidden divide-y divide-gray-800">
             {cashFlowRows.map((row, i) => {
               const diff      = (row.actual ?? 0) - (row.planned ?? 0);
               const progress  = pct(row.actual, row.planned);
               const isBalance = row.balance;
               const isIndent  = row.indent;
+              const isSavings = row.savings;
               return (
-                <div
-                  key={i}
-                  className={`px-4 py-3 ${isBalance ? "bg-gray-800/60" : ""} ${isIndent ? "pl-8 bg-gray-900/50" : ""}`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-sm font-medium ${isIndent ? "text-gray-400 text-xs" : isBalance ? "text-gray-100 font-semibold" : "text-gray-200"}`}>
-                      {isIndent && <span className="text-gray-600 mr-1">└</span>}
+                <div key={i} className={`px-4 py-3 ${isBalance ? "bg-gray-800/60" : ""} ${isIndent ? "pl-7 bg-gray-950/50" : ""}`}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className={`text-sm ${isIndent ? "text-gray-400 text-xs" : isBalance ? "text-gray-100 font-semibold" : "text-gray-200 font-medium"}`}>
                       {row.label}
                     </span>
                     <span className={`text-sm font-semibold ${
                       row.positive ? "text-green-400"
                       : row.negative ? "text-red-300"
+                      : isSavings ? "text-yellow-400"
                       : isBalance ? ((row.actual ?? 0) >= 0 ? "text-green-400" : "text-red-400")
                       : "text-gray-200"
-                    }`}>
-                      {fmt(row.actual)}
-                    </span>
+                    }`}>{fmt(row.actual)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Planned: {fmt(row.planned)}</span>
+                    <span className="text-xs text-gray-600">Budget: {fmt(row.planned)}</span>
                     <span className={`text-xs ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-gray-600"}`}>
                       {diff >= 0 ? "+" : ""}{fmt(diff)}
                     </span>
                   </div>
-                  {!row.neutral && !row.balance && row.planned > 0 && (
-                    <div className="flex items-center gap-2 mt-2">
+                  {!row.neutral && !row.balance && (row.planned ?? 0) > 0 && (
+                    <div className="flex items-center gap-2 mt-1.5">
                       <div className="flex-1 bg-gray-700 rounded-full h-1">
-                        <div
-                          className={`h-1 rounded-full ${progress >= 100 ? "bg-red-500" : progress >= 75 ? "bg-yellow-500" : "bg-indigo-500"}`}
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
+                        <div className={`h-1 rounded-full ${progress >= 100 ? "bg-red-500" : progress >= 75 ? "bg-yellow-500" : "bg-indigo-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} />
                       </div>
                       <span className="text-xs text-gray-600 w-7 text-right">{progress}%</span>
                     </div>
@@ -296,29 +303,41 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* ── SAVINGS & INVESTMENTS BREAKDOWN ── */}
+        {s.savingsBreakdown && s.savingsBreakdown.length > 0 && (
+          <section className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-800">
+              <h2 className="font-semibold text-gray-200 text-sm md:text-base">⭐ Savings & Investments</h2>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {s.savingsBreakdown.map((item, i) => (
+                <div key={i} className="px-4 md:px-6 py-3 flex items-center justify-between">
+                  <span className="text-sm text-gray-300">{item.sub_category}</span>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-gray-500">Budget: {fmt(item.planned)}</span>
+                    <span className="text-yellow-400 font-medium">Actual: {fmt(item.actual)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ── CHART ── */}
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-4 md:p-6">
           <h2 className="font-semibold text-gray-200 text-sm md:text-base mb-4">📈 Planned vs. Actual</h2>
           <Bar data={chartData} options={chartOptions} />
         </section>
 
-        {/* ── TRANSACTIONS TABLE ── */}
-        <TransactionTable
-          transactions={transactions}
-          onDelete={fetchData}
-          month={MONTHS[month]}
-          year={year}
-        />
+        {/* ── TRANSACTIONS ── */}
+        <TransactionTable transactions={transactions} onDelete={fetchData} month={MONTHS[month]} year={year} />
       </main>
 
-      {/* ── MODAL ── */}
       {showForm && (
-        <TransactionForm
-          month={month}
-          year={year}
-          onClose={() => setShowForm(false)}
-          onSaved={fetchData}
-        />
+        <TransactionForm month={month} year={year} onClose={() => setShowForm(false)} onSaved={fetchData} />
+      )}
+      {showPlan && (
+        <BudgetPlanEditor month={month} year={year} onClose={() => { setShowPlan(false); fetchData(); }} />
       )}
     </div>
   );
