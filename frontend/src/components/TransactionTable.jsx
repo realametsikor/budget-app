@@ -1,52 +1,153 @@
-import React from 'react';
-import { api } from '../api';
-import { Trash2 } from 'lucide-react';
+import { useState } from "react";
 
-export default function TransactionTable({ transactions, refreshData }) {
-    const handleDelete = async (id) => {
-        if(window.confirm('Delete this transaction?')) {
-            await api.delete(`/transactions/${id}`);
-            refreshData();
-        }
-    };
+// Fixed: Hardcoded your live Render backend
+const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
-    return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider">
-                            <th className="p-4 border-b">Date</th>
-                            <th className="p-4 border-b">Description</th>
-                            <th className="p-4 border-b">Category</th>
-                            <th className="p-4 border-b">Amount</th>
-                            <th className="p-4 border-b">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {transactions.map((t) => (
-                            <tr key={t.id} className="hover:bg-gray-50 transition border-b last:border-0">
-                                <td className="p-4 text-gray-700">{new Date(t.date).toLocaleDateString()}</td>
-                                <td className="p-4 text-gray-700">{t.description}</td>
-                                <td className="p-4 text-gray-700">
-                                    <span className="px-2 py-1 bg-gray-100 text-xs rounded-full">{t.category}</span>
-                                </td>
-                                <td className={`p-4 font-medium ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {t.type === 'income' ? '+' : '-'}${parseFloat(t.amount).toFixed(2)}
-                                </td>
-                                <td className="p-4">
-                                    <button onClick={() => handleDelete(t.id)} className="text-red-400 hover:text-red-600 transition">
-                                        <Trash2 size={18} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {transactions.length === 0 && (
-                            <tr><td colSpan="5" className="p-8 text-center text-gray-500">No transactions found.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+const SECTION_COLORS = {
+  income:  "bg-green-900/40 text-green-300 border-green-700",
+  expense: "bg-red-900/40 text-red-300 border-red-800",
+  savings: "bg-yellow-900/40 text-yellow-300 border-yellow-700",
+};
+
+const SECTION_ICONS = { income: "↑", expense: "↓", savings: "★" };
+
+export default function TransactionTable({ transactions, onDelete, month, year }) {
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState(null);
+
+  const fmt = (n) =>
+    new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
+
+  const filtered = transactions.filter(tx => {
+    const matchSection = filter === "all" || tx.section === filter;
+    const matchSearch  = !search ||
+      tx.description?.toLowerCase().includes(search.toLowerCase()) ||
+      tx.category?.toLowerCase().includes(search.toLowerCase()) ||
+      tx.sub_category?.toLowerCase().includes(search.toLowerCase());
+    return matchSection && matchSearch;
+  });
+
+  const handleDelete = async (id) => {
+    if (!confirm("Delete this transaction?")) return;
+    setDeleting(id);
+    await fetch(`${API}/transactions/${id}`, { method: "DELETE" });
+    setDeleting(null);
+    onDelete?.();
+  };
+
+  return (
+    <section className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center gap-3">
+        <h2 className="font-semibold text-gray-200 text-base flex-1">
+          🧾 Actual Expenditure — {month} {year}
+        </h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Filter tabs */}
+          {["all", "income", "expense", "savings"].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition border ${
+                filter === f
+                  ? "bg-indigo-600 text-white border-indigo-500"
+                  : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500"
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-36"
+          />
         </div>
-    );
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs uppercase text-gray-500 border-b border-gray-800 bg-gray-900/60">
+              <th className="text-left px-6 py-3">Date</th>
+              <th className="text-left px-6 py-3">Description</th>
+              <th className="text-left px-6 py-3">Category</th>
+              <th className="text-left px-6 py-3">Type</th>
+              <th className="text-right px-6 py-3">Amount</th>
+              <th className="px-6 py-3 w-16"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center py-12 text-gray-600 text-sm">
+                  No transactions found. Add your first one above.
+                </td>
+              </tr>
+            )}
+            {filtered.map(tx => (
+              <tr key={tx.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30 transition">
+                <td className="px-6 py-3 text-gray-400 text-xs whitespace-nowrap">
+                  {tx.transaction_date
+                    ? new Date(tx.transaction_date).toLocaleDateString("en-GB", {
+                        day: "2-digit", month: "short",
+                      })
+                    : "—"}
+                </td>
+                <td className="px-6 py-3 text-gray-200 max-w-xs truncate">{tx.description}</td>
+                <td className="px-6 py-3 text-gray-400 text-xs">
+                  <span className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5">
+                    {tx.sub_category || tx.category}
+                  </span>
+                </td>
+                <td className="px-6 py-3">
+                  <span className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    SECTION_COLORS[tx.section] || "bg-gray-800 text-gray-400 border-gray-700"
+                  }`}>
+                    <span>{SECTION_ICONS[tx.section] || "•"}</span>
+                    {tx.section}
+                  </span>
+                </td>
+                <td className={`px-6 py-3 text-right font-semibold ${
+                  tx.section === "income" ? "text-green-400" : "text-gray-100"
+                }`}>
+                  {tx.section === "income" ? "+" : "-"}{fmt(tx.amount)}
+                </td>
+                <td className="px-6 py-3 text-right">
+                  <button
+                    onClick={() => handleDelete(tx.id)}
+                    disabled={deleting === tx.id}
+                    className="text-gray-600 hover:text-red-400 transition text-xs disabled:opacity-50"
+                    title="Delete"
+                  >
+                    {deleting === tx.id ? "…" : "✕"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+
+          {/* Totals footer */}
+          {filtered.length > 0 && (
+            <tfoot>
+              <tr className="bg-gray-800/50 border-t border-gray-700 font-semibold text-sm">
+                <td colSpan={4} className="px-6 py-3 text-gray-400">
+                  {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
+                </td>
+                <td className="px-6 py-3 text-right text-gray-100">
+                  {fmt(filtered.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0))}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </section>
+  );
 }
