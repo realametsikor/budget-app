@@ -1,139 +1,192 @@
-# Budget Tracker Upgrade — Integration Guide
+# BudgetTracker — Auth Upgrade Guide
 
-## What’s Included
+## What’s in this delivery
 
 ```
-budget-upgrade/
+auth-upgrade/
 ├── migrations/
-│   └── 001_upgrade_schema.sql     ← Run this on your Neon DB first
-├── server.js                       ← Complete upgraded backend
-└── src/components/
-    ├── Dashboard.jsx               ← Main page (replace your current one)
-    ├── TransactionTable.jsx        ← Filterable transaction list
-    ├── TransactionForm.jsx         ← Add-transaction modal
-    └── BudgetPlanEditor.jsx        ← Edit planned budget amounts
+│   └── 003_multi_user_auth.sql      ← Run first in Neon
+├── server.js                         ← Full backend with auth
+├── src/
+│   ├── App.jsx                       ← Router with auth guards
+│   ├── context/
+│   │   └── AuthContext.jsx           ← Auth state, tokens, authFetch
+│   ├── pages/
+│   │   ├── HomePage.jsx              ← Public landing page
+│   │   └── AuthPages.jsx             ← Login + Register pages
+│   └── components/
+│       └── Dashboard.jsx             ← Auth-aware dashboard
 ```
+
+> TransactionForm, TransactionTable, BudgetPlanEditor stay the same —
+> just add `authFetch` prop and replace every `fetch(...)` call with
+> `authFetch(...)`. See “Update existing components” section below.
 
 -----
 
-## Step 1 — Run the Database Migration
+## Step 1 — Neon Database Migration
 
-Open your Neon dashboard → SQL Editor, paste and run:
+Paste `migrations/003_multi_user_auth.sql` into Neon SQL Editor and run it.
 
-```
-migrations/001_upgrade_schema.sql
-```
+This creates:
 
-This will:
-
-- Add new columns to your existing `transactions` table
-  (`budget_month`, `budget_year`, `section`, `sub_category`, `expected_amount`, `transaction_date`)
-- Create `budget_plans` table (one row per category per month)
-- Create `monthly_summaries` table (cash flow baseline)
-- Seed April 2026 with your spreadsheet’s planned amounts
+- `users` table (email+password and Google OAuth)
+- `sessions` table (refresh tokens)
+- Adds `user_id` FK to `transactions`, `budget_plans`, `monthly_summaries`
+- Re-creates unique constraints scoped per user
 
 -----
 
-## Step 2 — Update Your Backend
+## Step 2 — Backend environment variables
 
-Replace your existing `server.js` with the provided one.
-
-Make sure your `.env` has:
+Add to your Render environment (Dashboard → Environment):
 
 ```
-DATABASE_URL=postgresql://...   # your Neon connection string
-PORT=4000
+JWT_SECRET=<random 64-char string>
+JWT_REFRESH_SECRET=<another random 64-char string>
+GOOGLE_CLIENT_ID=<from Google Cloud Console>
+FRONTEND_URL=https://your-vercel-app.vercel.app
 ```
 
-Install any missing deps:
+Generate secrets:
 
 ```bash
-npm install express cors pg dotenv
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
-Ensure `package.json` has `"type": "module"` (the file uses ES module imports).
+Install new backend dependencies:
+
+```bash
+npm install bcryptjs jsonwebtoken google-auth-library
+```
 
 -----
 
-## Step 3 — Update Your Frontend
+## Step 3 — Google OAuth setup (takes ~5 minutes)
 
-Copy the four component files into `src/components/`.
+1. Go to https://console.cloud.google.com
+1. Create a project (or use existing)
+1. APIs & Services → Credentials → Create OAuth 2.0 Client ID
+1. Application type: **Web application**
+1. Authorised JavaScript origins:
+- `http://localhost:5173`
+- `https://your-vercel-app.vercel.app`
+1. Copy the **Client ID** — no client secret needed (we use the newer GSI flow)
 
-Install Chart.js if not already present:
+-----
+
+## Step 4 — Frontend environment variables
+
+Create/update `frontend/.env`:
+
+```
+VITE_GOOGLE_CLIENT_ID=your-google-client-id-here.apps.googleusercontent.com
+```
+
+-----
+
+## Step 5 — Add Google Identity Services script to index.html
+
+In `frontend/index.html`, add inside `<head>`:
+
+```html
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+```
+
+-----
+
+## Step 6 — Install frontend dependencies
 
 ```bash
-npm install chart.js react-chartjs-2
+cd frontend
+npm install react-router-dom
 ```
 
-In your `.env` (Vite):
+-----
 
-```
-VITE_API_URL=http://localhost:4000/api
-```
+## Step 7 — Replace frontend files
 
-In your `App.jsx` (or router), render `<Dashboard />` as the main route.
+|File                          |Action                           |
+|------------------------------|---------------------------------|
+|`src/App.jsx`                 |Replace entirely                 |
+|`src/context/AuthContext.jsx` |New file — create directory first|
+|`src/pages/HomePage.jsx`      |New file — create directory first|
+|`src/pages/AuthPages.jsx`     |New file                         |
+|`src/components/Dashboard.jsx`|Replace entirely                 |
 
-To add the Budget Plan Editor button to the Dashboard header, add this alongside the “+ Add Transaction” button:
+-----
+
+## Step 8 — Update existing components to use authFetch
+
+`TransactionForm.jsx`, `TransactionTable.jsx`, and `BudgetPlanEditor.jsx` each
+make `fetch()` calls to the API. Since the API now requires a Bearer token, you
+need to:
+
+### A) Accept the authFetch prop
 
 ```jsx
-import BudgetPlanEditor from "./BudgetPlanEditor";
+// Before
+export default function TransactionForm({ month, year, onClose, onSaved }) {
 
-// In state:
-const [showPlanEditor, setShowPlanEditor] = useState(false);
+// After
+export default function TransactionForm({ month, year, onClose, onSaved, authFetch }) {
+```
 
-// In JSX (next to the existing button):
-<button
-  onClick={() => setShowPlanEditor(true)}
-  className="bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition border border-gray-600"
->
-  📋 Edit Budget Plan
-</button>
+### B) Replace every fetch() call
 
-// At the bottom of the return, alongside the TransactionForm modal:
-{showPlanEditor && (
-  <BudgetPlanEditor
-    month={month}
-    year={year}
-    onClose={() => { setShowPlanEditor(false); fetchData(); }}
-  />
-)}
+```jsx
+// Before
+const res = await fetch(`${API}/transactions`, { method: "POST", ... });
+
+// After
+const res = await authFetch(`${API}/transactions`, { method: "POST", ... });
+```
+
+Do this in all three components. The `authFetch` function handles:
+
+- Adding the Authorization header automatically
+- Refreshing the access token silently if it expires
+- Redirecting to login if the refresh token is also expired
+
+-----
+
+## How auth works (for reference)
+
+```
+Register/Login → access token (15 min) + refresh token (30 days)
+                 Both stored in localStorage
+
+API calls → authFetch adds "Authorization: Bearer <access>"
+
+401 response → authFetch calls POST /api/auth/refresh with refresh token
+               Gets new access token → retries original request
+
+Refresh expired → user is logged out, redirected to /login
+
+Logout → DELETE from sessions table, clear localStorage
 ```
 
 -----
 
-## How It Maps to Your Spreadsheet
+## Routes
 
-|Spreadsheet Section      |App Equivalent                                 |
-|-------------------------|-----------------------------------------------|
-|Cash Flow (Budget/Actual)|Dashboard → Cash Flow Summary table            |
-|Income rows              |`section = 'income'` transactions              |
-|Expenses (variable)      |`section = 'expense'`, `category = 'Expenses'` |
-|Bills                    |`section = 'expense'`, `category = 'Bills'`    |
-|Debts                    |`section = 'expense'`, `category = 'Debts'`    |
-|Savings & Investments    |`section = 'savings'` transactions             |
-|Balance formula          |`startBalance + income - expenses - savings`   |
-|Spent formula            |`bills + debts + variableExpenses`             |
-|Actual Expenditure table |TransactionTable component                     |
-|Budget column            |`budget_plans.budget_amount` (BudgetPlanEditor)|
+|Path       |Page     |Access                                     |
+|-----------|---------|-------------------------------------------|
+|`/`        |Homepage |Public                                     |
+|`/login`   |Login    |Public (redirects to /app if logged in)    |
+|`/register`|Register |Public (redirects to /app if logged in)    |
+|`/app`     |Dashboard|Private (redirects to /login if logged out)|
 
 -----
 
-## API Reference
+## When you’re ready to monetise
 
-|Method|Endpoint                        |Description                    |
-|------|--------------------------------|-------------------------------|
-|GET   |`/api/summary?year=&month=`     |Full cash flow summary         |
-|GET   |`/api/transactions?year=&month=`|All transactions for a month   |
-|POST  |`/api/transactions`             |Add a transaction              |
-|PATCH |`/api/transactions/:id`         |Update a transaction           |
-|DELETE|`/api/transactions/:id`         |Delete a transaction           |
-|GET   |`/api/budget-plans?year=&month=`|Get planned amounts for a month|
-|PUT   |`/api/budget-plans`             |Upsert a planned amount        |
+The user table already has the structure for it. To add paid tiers later:
 
------
+```sql
+ALTER TABLE users
+  ADD COLUMN plan TEXT NOT NULL DEFAULT 'free',  -- 'free' | 'pro'
+  ADD COLUMN plan_expires_at TIMESTAMPTZ;
+```
 
-## Notes
-
-- Currency is formatted as **GHS (₵)** throughout. To change, search for `GHS` in the component files.
-- The `Tithe` line uses a percentage in the spreadsheet (10%). Currently treated as a fixed amount — enter the computed value manually or add a `%`-mode toggle to the form.
-- To add more months, copy the seed block in the SQL file and change the month number.
+Then gate features in both the backend (`req.user.plan`) and frontend.
