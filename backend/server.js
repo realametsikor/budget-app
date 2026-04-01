@@ -7,13 +7,35 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 1. Updated Database Connection (Now with SSL for Neon)
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: process.env.DB_PORT,
+    ssl: { require: true, rejectUnauthorized: false }
 });
+
+// 2. Auto-Create Table on Startup (Saves you from doing it manually in Neon)
+const initDB = async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS transactions (
+                id SERIAL PRIMARY KEY,
+                type VARCHAR(10) CHECK (type IN ('income', 'expense')) NOT NULL,
+                amount DECIMAL(12, 2) NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                description TEXT,
+                date DATE DEFAULT CURRENT_DATE
+            );
+        `);
+        console.log('Database connected and table verified.');
+    } catch (err) {
+        console.error('Error initializing database:', err);
+    }
+};
+initDB();
 
 // GET: All Transactions
 app.get('/api/transactions', async (req, res) => {
