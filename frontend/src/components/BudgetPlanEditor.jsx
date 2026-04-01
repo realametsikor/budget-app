@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-// Fixed: Hardcoded your live Render backend
+// Hardcoded your live Render backend
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -39,7 +39,7 @@ const SECTIONS = [
 ];
 
 export default function BudgetPlanEditor({ month, year, onClose }) {
-  const [plans, setPlans] = useState({});     // { sub_category: amount }
+  const [plans, setPlans] = useState({});
   const [saving, setSaving] = useState({});
   const [saved, setSaved]   = useState({});
 
@@ -76,17 +76,22 @@ export default function BudgetPlanEditor({ month, year, onClose }) {
     items.reduce((sum, item) => sum + parseFloat(plans[item] || 0), 0);
 
   return (
+    /* Backdrop - Claude's Fix 2 Applied Here */
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={onClose}
     >
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl my-8">
+      {/* Modal Container - Claude's Fix 2 Applied Here */}
+      <div 
+        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl my-8"
+        onClick={e => e.stopPropagation()} 
+      >
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
           <div>
             <h2 className="text-lg font-semibold text-gray-100">Edit Budget Plan</h2>
             <p className="text-xs text-gray-500 mt-0.5">{MONTHS[month]} {year} · Set planned amounts</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">×</button>
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">×</button>
         </div>
 
         <div className="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -128,6 +133,7 @@ export default function BudgetPlanEditor({ month, year, onClose }) {
 
         <div className="px-6 pb-5 pt-2 border-t border-gray-800">
           <button
+            type="button"
             onClick={onClose}
             className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition"
           >
