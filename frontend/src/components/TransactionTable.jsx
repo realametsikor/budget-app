@@ -39,12 +39,15 @@ export default function TransactionTable({ transactions, onDelete, month, year }
   return (
     <section className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center gap-3">
-        <h2 className="font-semibold text-gray-200 text-base flex-1">
-          🧾 Actual Expenditure — {month} {year}
-        </h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Filter tabs */}
+      <div className="px-4 md:px-6 py-4 border-b border-gray-800">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-gray-200 text-sm md:text-base">
+            🧾 Expenditure — {month} {year}
+          </h2>
+        </div>
+
+        {/* Filters + Search */}
+        <div className="flex flex-wrap items-center gap-2">
           {["all", "income", "expense", "savings"].map(f => (
             <button
               key={f}
@@ -58,19 +61,18 @@ export default function TransactionTable({ transactions, onDelete, month, year }
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
-          {/* Search */}
           <input
             type="text"
-            placeholder="Search…"
+            placeholder="Search..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-36"
+            className="ml-auto bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-32 md:w-40"
           />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-xs uppercase text-gray-500 border-b border-gray-800 bg-gray-900/60">
@@ -94,9 +96,7 @@ export default function TransactionTable({ transactions, onDelete, month, year }
               <tr key={tx.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30 transition">
                 <td className="px-6 py-3 text-gray-400 text-xs whitespace-nowrap">
                   {tx.transaction_date
-                    ? new Date(tx.transaction_date).toLocaleDateString("en-GB", {
-                        day: "2-digit", month: "short",
-                      })
+                    ? new Date(tx.transaction_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
                     : "—"}
                 </td>
                 <td className="px-6 py-3 text-gray-200 max-w-xs truncate">{tx.description}</td>
@@ -106,33 +106,21 @@ export default function TransactionTable({ transactions, onDelete, month, year }
                   </span>
                 </td>
                 <td className="px-6 py-3">
-                  <span className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    SECTION_COLORS[tx.section] || "bg-gray-800 text-gray-400 border-gray-700"
-                  }`}>
-                    <span>{SECTION_ICONS[tx.section] || "•"}</span>
-                    {tx.section}
+                  <span className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-medium ${SECTION_COLORS[tx.section] || "bg-gray-800 text-gray-400 border-gray-700"}`}>
+                    {SECTION_ICONS[tx.section] || "•"} {tx.section}
                   </span>
                 </td>
-                <td className={`px-6 py-3 text-right font-semibold ${
-                  tx.section === "income" ? "text-green-400" : "text-gray-100"
-                }`}>
+                <td className={`px-6 py-3 text-right font-semibold ${tx.section === "income" ? "text-green-400" : "text-gray-100"}`}>
                   {tx.section === "income" ? "+" : "-"}{fmt(tx.amount)}
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <button
-                    onClick={() => handleDelete(tx.id)}
-                    disabled={deleting === tx.id}
-                    className="text-gray-600 hover:text-red-400 transition text-xs disabled:opacity-50"
-                    title="Delete"
-                  >
-                    {deleting === tx.id ? "…" : "✕"}
+                  <button onClick={() => handleDelete(tx.id)} disabled={deleting === tx.id} className="text-gray-600 hover:text-red-400 transition text-xs disabled:opacity-50">
+                    {deleting === tx.id ? "..." : "✕"}
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
-
-          {/* Totals footer */}
           {filtered.length > 0 && (
             <tfoot>
               <tr className="bg-gray-800/50 border-t border-gray-700 font-semibold text-sm">
@@ -147,6 +135,67 @@ export default function TransactionTable({ transactions, onDelete, month, year }
             </tfoot>
           )}
         </table>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden">
+        {filtered.length === 0 && (
+          <p className="text-center py-10 text-gray-600 text-sm">
+            No transactions found. Add your first one above.
+          </p>
+        )}
+        <div className="divide-y divide-gray-800">
+          {filtered.map(tx => (
+            <div key={tx.id} className="px-4 py-3 flex items-center gap-3">
+              {/* Type badge */}
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
+                tx.section === "income"  ? "bg-green-900/50 text-green-400" :
+                tx.section === "savings" ? "bg-yellow-900/50 text-yellow-400" :
+                "bg-red-900/50 text-red-400"
+              }`}>
+                {SECTION_ICONS[tx.section] || "•"}
+              </div>
+
+              {/* Description + category */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-200 truncate font-medium">{tx.description}</p>
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                  <span>{tx.sub_category || tx.category}</span>
+                  {tx.transaction_date && (
+                    <>
+                      <span className="text-gray-700">·</span>
+                      <span>{new Date(tx.transaction_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {/* Amount + delete */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-sm font-semibold ${tx.section === "income" ? "text-green-400" : "text-gray-100"}`}>
+                  {tx.section === "income" ? "+" : "-"}{fmt(tx.amount)}
+                </span>
+                <button
+                  onClick={() => handleDelete(tx.id)}
+                  disabled={deleting === tx.id}
+                  className="text-gray-700 hover:text-red-400 transition text-xs p-1 disabled:opacity-50"
+                >
+                  {deleting === tx.id ? "..." : "✕"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile footer total */}
+        {filtered.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-800 bg-gray-800/50 flex justify-between text-sm font-semibold">
+            <span className="text-gray-400">{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}</span>
+            <span className="text-gray-100">
+              {fmt(filtered.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0))}
+            </span>
+          </div>
+        )}
       </div>
     </section>
   );
