@@ -94,7 +94,7 @@ export default function HomePage() {
               <>
                 <button onClick={() => navigate("/login")} className="hidden sm:block text-sm font-bold transition-colors hover:opacity-70">Sign in</button>
                 <button onClick={() => navigate("/register")} className="text-sm px-6 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform" style={{ background: t.accent, color: isDark ? "#000" : "#fff" }}>
-                  Get Started
+                  Get Started Free
                 </button>
               </>
             )}
@@ -103,9 +103,8 @@ export default function HomePage() {
       </nav>
 
       {/* ── HERO SECTION ── */}
-      <section className="relative pt-40 pb-20 md:pt-48 md:pb-32 px-6 flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto gap-10 lg:gap-8">
+      <section className="relative pt-40 pb-20 md:pt-48 md:pb-32 px-6 flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto gap-16 lg:gap-8">
         
-        {/* Left Content */}
         <div className="flex-1 text-center lg:text-left z-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-8 text-xs font-bold uppercase tracking-wider shadow-sm glass-card" style={{ borderColor: t.cardBorder, color: t.accent, background: t.card }}>
             <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: t.accent }} /> Premium Financial Clarity
@@ -144,12 +143,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Right Floating Cards Animation (FIXED SCALING FOR MOBILE) */}
-        <div className="flex-1 w-full relative h-[400px] md:h-[550px] flex items-center justify-center z-10 mt-24 sm:mt-32 lg:mt-0 transform scale-[0.80] sm:scale-100 origin-top">
+        {/* Right Floating Cards Animation */}
+        <div className="flex-1 w-full relative h-[400px] md:h-[550px] flex items-center justify-center z-10 perspective-1000 mt-10 lg:mt-0 transform scale-[0.80] sm:scale-100 origin-top">
           
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[80px] animate-pulse-glow" style={{ background: t.accentBg }} />
 
-          {/* Card 1: Main Balance (Center) */}
           <div className="absolute z-20 w-72 md:w-80 p-6 md:p-8 rounded-[2rem] border shadow-2xl glass-card animate-float-2" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="flex justify-between items-start mb-6">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: t.accentBg, color: t.accent }}><Wallet size={24} /></div>
@@ -159,8 +157,7 @@ export default function HomePage() {
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight">₵12,450.00</h2>
           </div>
 
-          {/* Card 2: Savings Goal (Top Left) */}
-          <div className="absolute z-10 -left-8 md:-left-12 -top-10 md:top-10 w-64 p-6 rounded-[2rem] border shadow-xl glass-card animate-float-1" style={{ background: t.card, borderColor: t.cardBorder }}>
+          <div className="absolute z-10 -left-4 md:-left-12 top-4 md:top-10 w-64 p-6 rounded-[2rem] border shadow-xl glass-card animate-float-1" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="flex items-center gap-4 mb-4">
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `${t.accent}20`, color: t.accent }}><Target size={20}/></div>
               <div>
@@ -173,8 +170,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Card 3: Recent Activity (Bottom Right) */}
-          <div className="absolute z-30 -right-8 md:-right-8 -bottom-10 md:bottom-10 w-72 p-6 rounded-[2rem] border shadow-2xl glass-card animate-float-3" style={{ background: t.card, borderColor: t.cardBorder }}>
+          <div className="absolute z-30 -right-4 md:-right-8 bottom-4 md:bottom-10 w-64 p-6 rounded-[2rem] border shadow-2xl glass-card animate-float-3" style={{ background: t.card, borderColor: t.cardBorder }}>
              <h4 className="font-bold mb-4 uppercase tracking-wider text-xs" style={{ color: t.textMuted }}>Recent Activity</h4>
              <div className="flex items-center justify-between mb-4">
                <div className="flex gap-3 items-center">
@@ -201,7 +197,7 @@ export default function HomePage() {
       </section>
 
       {/* ── PHILOSOPHY SECTION ── */}
-      <section id="philosophy" className="py-32 px-6 border-y mt-10 sm:mt-0" style={{ borderColor: t.cardBorder, background: isDark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)" }}>
+      <section id="philosophy" className="py-32 px-6 border-y" style={{ borderColor: t.cardBorder, background: isDark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)" }}>
         <div className="max-w-4xl mx-auto text-center">
            <BookOpen size={40} className="mx-auto mb-8" style={{ color: t.accent }} />
            <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: t.accent }}>The Philosophy</p>
@@ -262,6 +258,29 @@ export default function HomePage() {
             <p className="text-lg leading-relaxed font-medium max-w-lg" style={{ color: t.textMuted }}>
               Beautiful, distraction-free charts that explain your financial health in seconds. Instantly see your savings rate and burn rate.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECURITY / TRUST ── */}
+      <section id="security" className="py-32 border-t" style={{ borderColor: t.cardBorder }}>
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-xl mb-10" style={{ background: t.accent, color: isDark ? "#000" : "#fff" }}>
+            <ShieldCheck size={36} strokeWidth={2} />
+          </div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.5rem, 6vw, 4rem)", fontWeight: 700 }}>
+            Uncompromising Privacy.
+          </h2>
+          <p className="mt-8 text-xl font-medium leading-relaxed max-w-2xl mx-auto" style={{ color: t.textMuted }}>
+            Your financial data is deeply personal. We utilize bank-grade encryption to secure your records. We do not run ads, we do not sell data, and we do not connect to third-party trackers.
+          </p>
+          <div className="mt-12 flex flex-wrap justify-center gap-4">
+            <span className="px-6 py-3 rounded-full border font-bold text-sm shadow-sm glass-card flex items-center gap-2" style={{ borderColor: t.cardBorder, color: t.text, background: t.card }}>
+              <Lock size={16} style={{ color: t.accent }} /> End-to-end isolation
+            </span>
+            <span className="px-6 py-3 rounded-full border font-bold text-sm shadow-sm glass-card flex items-center gap-2" style={{ borderColor: t.cardBorder, color: t.text, background: t.card }}>
+              <CheckCircle2 size={16} style={{ color: t.accent }} /> Ad-free experience
+            </span>
           </div>
         </div>
       </section>
