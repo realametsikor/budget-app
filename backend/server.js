@@ -192,7 +192,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// ── SUMMARY ───────────────────────────────────────────────────────
+// ── SUMMARY (DYNAMIC CALCULATION FIX) ─────────────────────────────
 app.get("/api/summary", authenticateToken, async (req, res) => {
   const { year, month } = req.query;
   try {
@@ -202,55 +202,75 @@ app.get("/api/summary", authenticateToken, async (req, res) => {
         [req.user.id, year, month]
       ),
       pool.query(
-        "SELECT section, sub_category, SUM(amount) AS actual FROM transactions WHERE user_id=$1 AND budget_year=$2 AND budget_month=$3 GROUP BY section, sub_category",
+        "SELECT section, SUM(amount) AS actual FROM transactions WHERE user_id=$1 AND budget_year=$2 AND budget_month=$3 GROUP BY section",
         [req.user.id, year, month]
       ),
       pool.query(
-        "SELECT section, sub_category, budget_amount FROM budget_plans WHERE user_id=$1 AND budget_year=$2 AND budget_month=$3",
+        "SELECT section, SUM(budget_amount) AS planned FROM budget_plans WHERE user_id=$1 AND budget_year=$2 AND budget_month=$3 GROUP BY section",
         [req.user.id, year, month]
       ),
     ]);
 
     const startBalance = parseFloat(sumRes.rows[0]?.start_balance) || 0;
-    const planned = {};
-    planRes.rows.forEach(r => { planned[r.sub_category] = parseFloat(r.budget_amount) || 0; });
-    const actuals = {};
-    txRes.rows.forEach(r => { actuals[r.sub_category] = parseFloat(r.actual) || 0; });
 
-    const incomePlanned = ["Paycheck 1","Paycheck 2","Paycheck 3","Paycheck 4","Other Income"]
-      .reduce((s, k) => s + (planned[k] || 0), 0);
-    
-    if (planned["Tithe"] != null && planned["Tithe"] <= 1 && planned["Tithe"] > 0) {
-      planned["Tithe"] = incomePlanned * planned["Tithe"];
-    }
+    // Dynamically categorize everything based on the "Section"
+    const planned = { income: 0, savings: 0, bills: 0, variable: 0, debts: 0, spent: 0 };
+    planRes.rows.forEach(r => {
+      const amt = Math.abs(parseFloat(r.planned) || 0);
+      const sec = (r.section || '').toLowerCase();
+      if (sec.includes('income')) planned.income += amt;
+      else if (sec.includes('saving')) planned.savings += amt;
+      else if (sec.includes('bill')) { planned.bills += amt; planned.spent += amt; }
+      else if (sec.includes('debt')) { planned.debts += amt; planned.spent += amt; }
+      else { planned.variable += amt; planned.spent += amt; }
+    });
 
-    const sumKeys = (keys) => keys.reduce(
-      (acc, k) => ({ planned: acc.planned + (planned[k] || 0), actual: acc.actual + (actuals[k] || 0) }),
-      { planned: 0, actual: 0 }
+    const actual = { income: 0, savings: 0, bills: 0, variable: 0, debts: 0, spent: 0 };
+    txRes.rows.forEach(r => {
+      const amt = Math.abs(parseFloat(r.actual) || 0);
+      const sec = (r.section || '').toLowerCase();
+      if (sec.includes('income')) actual.income += amt;
+      else if (sec.includes('saving')) actual.savings += amt;
+      else if (sec.includes('bill')) { actual.bills += amt; actual.spent += amt; }
+      else if (sec.includes('debt')) { actual.debts += amt; actual.spent += amt; }
+      else { actual.variable += amt; actual.spent += amt; }
+    });
+
+    // Savings Breakdown for the dashboard
+    const savingsTx = await pool.query(
+       "SELECT sub_category, SUM(amount) as actual FROM transactions WHERE user_id=$1 AND budget_year=$2 AND budget_month=$3 AND LOWER(section) LIKE '%saving%' GROUP BY sub_category",
+       [req.user.id, year, month]
+    );
+    const savingsPlan = await pool.query(
+       "SELECT sub_category, SUM(budget_amount) as planned FROM budget_plans WHERE user_id=$1 AND budget_year=$2 AND budget_month=$3 AND LOWER(section) LIKE '%saving%' GROUP BY sub_category",
+       [req.user.id, year, month]
     );
 
-    const income = sumKeys(["Paycheck 1","Paycheck 2","Paycheck 3","Paycheck 4","Other Income"]);
-    const savings = sumKeys(["Petra Savings Booster","IC Liquidity Fund","Trade Stocks"]);
-    const bills = sumKeys(["Internet","Wi-Fi","Dues","Airtime"]);
-    
-    const variableKeys = ["Dining Out/Take Out","Groceries","Uber","Public transport","Personal Care","Tithe","Utilities","Home Supplies","Health/Medical","Travel","Other"];
-    const variableExpenses = sumKeys(variableKeys);
+    const sbMap = {};
+    savingsPlan.rows.forEach(r => sbMap[r.sub_category || 'Other'] = { planned: parseFloat(r.planned) || 0, actual: 0 });
+    savingsTx.rows.forEach(r => {
+       const sub = r.sub_category || 'Other';
+       if (!sbMap[sub]) sbMap[sub] = { planned: 0, actual: 0 };
+       sbMap[sub].actual = Math.abs(parseFloat(r.actual) || 0);
+    });
+    const savingsBreakdown = Object.keys(sbMap).map(k => ({ sub_category: k, planned: sbMap[k].planned, actual: sbMap[k].actual }));
 
-    const totalExpenses = {
-      planned: bills.planned + variableExpenses.planned,
-      actual:  bills.actual  + variableExpenses.actual,
-    };
+    res.json({
+      year, month, startBalance,
+      income: { planned: planned.income, actual: actual.income },
+      savings: { planned: planned.savings, actual: actual.savings },
+      bills: { planned: planned.bills, actual: actual.bills },
+      debts: { planned: planned.debts, actual: actual.debts },
+      variableExpenses: { planned: planned.variable, actual: actual.variable },
+      totalExpenses: { planned: planned.spent, actual: actual.spent },
+      spent: { planned: planned.spent, actual: actual.spent },
+      balance: {
+        planned: startBalance + planned.income - planned.spent - planned.savings,
+        actual: startBalance + actual.income - actual.spent - actual.savings
+      },
+      savingsBreakdown
+    });
 
-    const balance = {
-      planned: startBalance + income.planned - totalExpenses.planned - savings.planned,
-      actual:  startBalance + income.actual  - totalExpenses.actual  - savings.actual,
-    };
-
-    const savingsBreakdown = ["Petra Savings Booster","IC Liquidity Fund","Trade Stocks"].map(k => ({
-      sub_category: k, planned: planned[k] || 0, actual: actuals[k] || 0,
-    }));
-
-    res.json({ year, month, startBalance, income, savings, bills, variableExpenses, totalExpenses, balance, savingsBreakdown });
   } catch (err) {
     console.error("Summary error:", err.message);
     res.status(500).json({ error: err.message });
@@ -287,14 +307,18 @@ app.get("/api/transactions", authenticateToken, async (req, res) => {
   }
 });
 
-// ── FIX: Added the 'type' column to satisfy the database schema ──
+// ── FIX: Strictly force 'type' to satisfy the constraint ──
 app.post("/api/transactions", authenticateToken, async (req, res) => {
   const { description, amount, category, sub_category, section, transaction_date, budget_month, budget_year } = req.body;
   try {
+    // If it's an income, save as 'income'. Everything else is money leaving the balance, so it's 'expense'
+    const isIncome = (section || '').toLowerCase().includes('income');
+    const dbType = isIncome ? 'income' : 'expense';
+
     await pool.query(
       `INSERT INTO transactions (user_id, description, amount, category, sub_category, section, type, transaction_date, budget_month, budget_year) 
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [req.user.id, description, amount, category, sub_category, section, section || "expense", transaction_date, budget_month, budget_year]
+      [req.user.id, description, amount, category, sub_category, section, dbType, transaction_date, budget_month, budget_year]
     );
     res.json({ success: true });
   } catch (err) {
