@@ -12,7 +12,7 @@ import TransactionForm  from "./TransactionForm";
 import BudgetPlanEditor from "./BudgetPlanEditor";
 import { 
   ArrowLeft, Wallet, FileText, Plus, PieChart, Receipt,
-  ArrowUpRight, ArrowDownRight, Star, Scale, Activity, Sun, Moon, LogOut, Target
+  ArrowUpRight, ArrowDownRight, Star, Scale, Activity, Sun, Moon, LogOut, Target, LayoutDashboard
 } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -70,7 +70,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const now = new Date();
 
-  // Fallback to dark if theme is somehow undefined from Context
   const currentTheme = theme || "dark";
   const t = THEMES[currentTheme];
 
@@ -113,7 +112,7 @@ export default function Dashboard() {
   const s = summary || {};
   const healthInfo = healthScore(s);
   const hColor = t[healthInfo.color] || t.textMuted;
-  const initials = user?.name?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "USR";
+  const initials = user?.name?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   const chartOptions = {
     responsive: true, maintainAspectRatio: true,
@@ -283,6 +282,7 @@ export default function Dashboard() {
               { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={20} strokeWidth={3}/> }
             ].map((card, i) => (
               <div key={i} className="rounded-3xl p-6 md:p-8 border shadow-lg transition-transform hover:-translate-y-2 relative overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+                <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none" style={{ background: card.c }} />
                 <div className="flex items-center justify-between mb-8">
                   <span className="text-xs font-bold uppercase tracking-widest" style={{ color: t.textMuted }}>{card.label}</span>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
