@@ -26,18 +26,33 @@ function GoogleButton({ label = "Continue with Google", t, theme }) {
 
   const handleClick = () => {
     if (!window.google) return alert("Google Sign-In is not loaded.");
+    
     setLoading(true);
+    
     window.google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
       callback: async ({ credential }) => {
         try {
           await loginWithGoogle(credential);
           navigate("/app");
-        } catch (err) { alert(err.message); } 
-        finally { setLoading(false); }
+        } catch (err) { 
+          alert(err.message); 
+        } finally { 
+          setLoading(false); 
+        }
       },
     });
-    window.google.accounts.id.prompt();
+
+    // FIX: Listen for prompt closures to stop the infinite spinner
+    window.google.accounts.id.prompt((notification) => {
+      if (
+        notification.isNotDisplayed() || 
+        notification.isSkippedMoment() || 
+        notification.isDismissedMoment()
+      ) {
+        setLoading(false);
+      }
+    });
   };
 
   return (
@@ -86,7 +101,7 @@ function Field({ label, type = "text", value, onChange, placeholder, t }) {
 function AuthLayout({ children, title, subtitle }) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useAuth();
-  const t = THEMES[theme];
+  const t = THEMES[theme || "dark"];
 
   return (
     <div className={`min-h-screen flex flex-col ${t.bgClass} ${t.meshClass} transition-colors duration-700`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -125,7 +140,7 @@ function AuthLayout({ children, title, subtitle }) {
 export function RegisterPage() {
   const navigate = useNavigate();
   const { register, theme } = useAuth();
-  const t = THEMES[theme];
+  const t = THEMES[theme || "dark"];
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setErr] = useState("");
   const [loading, setL] = useState(false);
@@ -173,7 +188,7 @@ export function RegisterPage() {
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, theme } = useAuth();
-  const t = THEMES[theme];
+  const t = THEMES[theme || "dark"];
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setErr] = useState("");
   const [loading, setL] = useState(false);
