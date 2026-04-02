@@ -1,6 +1,5 @@
 // src/components/TransactionTable.jsx
 import { useState } from "react";
-// 👇 Fixed: Added ReceiptText to the imports
 import { Search, ArrowDownRight, ArrowUpRight, Star, X, ReceiptText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -55,14 +54,15 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="flex gap-2 w-full sm:w-auto">
             {["All", "Income", "Expense", "Savings"].map(f => (
-              <button key={f} onClick={() => setFilter(f)} className="px-4 py-2 rounded-lg text-xs font-bold transition-colors" style={{ background: filter === f ? t.accent : t.inputBg, color: filter === f ? (theme==="dark"?"#000":"#fff") : t.textMuted }}>
+              <button key={f} onClick={() => setFilter(f)} className="px-4 py-2.5 rounded-xl text-xs font-bold transition-colors flex-1 sm:flex-none" style={{ background: filter === f ? t.accent : t.inputBg, color: filter === f ? (theme==="dark"?"#000":"#fff") : t.textMuted }}>
                 {f}
               </button>
             ))}
           </div>
+          
           <div className="relative w-full sm:w-48">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMuted }} />
-            <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 rounded-lg text-sm font-medium outline-none transition-colors" style={{ background: t.inputBg, border: `1px solid ${t.border}`, color: t.text }} />
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: t.textMuted }} />
+            <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-colors" style={{ background: t.inputBg, border: `1px solid ${t.border}`, color: t.text }} />
           </div>
         </div>
       </div>
@@ -70,28 +70,32 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
       {/* List */}
       <div className="divide-y" style={{ borderColor: t.border }}>
         {filtered.length === 0 ? (
-          <div className="p-8 text-center font-medium" style={{ color: t.textMuted }}>No transactions found.</div>
+          <div className="p-12 text-center">
+            <ReceiptText size={40} className="mx-auto mb-4 opacity-20" style={{ color: t.textMuted }} />
+            <p className="font-bold text-lg" style={{ color: t.text }}>No records found</p>
+            <p className="text-sm font-medium mt-1" style={{ color: t.textMuted }}>Your transaction history is empty.</p>
+          </div>
         ) : (
           filtered.map(tx => {
             const isInc = (tx.section || "").toLowerCase().includes("income");
             const isSav = (tx.section || "").toLowerCase().includes("saving");
-            const icon = isInc ? <ArrowDownRight size={16} /> : isSav ? <Star size={14} /> : <ArrowUpRight size={16} />;
+            const icon = isInc ? <ArrowDownRight size={16} strokeWidth={3} /> : isSav ? <Star size={14} strokeWidth={3} /> : <ArrowUpRight size={16} strokeWidth={3} />;
             const color = isInc ? t.green : isSav ? t.accent : t.red;
             const date = new Date(tx.transaction_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 
             return (
               <div key={tx.id} className="px-6 py-4 flex items-center gap-4 hover:opacity-80 transition-opacity" style={{ background: theme==="dark"?"rgba(255,255,255,0.01)":"rgba(0,0,0,0.01)" }}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${color}15`, color: color }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}15`, color: color }}>
                   {icon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: t.text }}>{tx.description}</p>
-                  <p className="text-xs font-medium mt-1 truncate" style={{ color: t.textMuted }}>{tx.sub_category || tx.category} · {date}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider mt-1 truncate" style={{ color: t.textMuted }}>{tx.sub_category || tx.category} <span className="mx-1 opacity-50">•</span> {date}</p>
                 </div>
-                <div className="text-right flex items-center gap-3">
-                  <span className="text-sm md:text-base font-bold" style={{ color }}>{isInc ? "+" : "-"}{fmt(tx.amount)}</span>
-                  <button onClick={() => handleDelete(tx.id)} className="p-1.5 rounded transition-colors hover:bg-red-500/20 text-red-500/50 hover:text-red-500">
-                    <X size={16} />
+                <div className="text-right flex items-center gap-4">
+                  <span className="text-base font-bold" style={{ color }}>{isInc ? "+" : "-"}{fmt(tx.amount)}</span>
+                  <button onClick={() => handleDelete(tx.id)} className="p-2 rounded-lg transition-colors hover:bg-red-500/20 text-red-500/50 hover:text-red-500">
+                    <X size={16} strokeWidth={3} />
                   </button>
                 </div>
               </div>
