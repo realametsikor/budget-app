@@ -39,6 +39,10 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
     setError("");
     if (!amount || isNaN(amount) || amount <= 0) return setError("Please enter a valid amount.");
     setLoading(true);
+    
+    // ── FIX: Database bypass. We forcefully inject "income" or "expense" so the DB accepts it ──
+    const dbType = section.includes("Income") ? "income" : "expense";
+
     try {
       await authFetch(`${API}/transactions`, {
         method: "POST",
@@ -48,6 +52,7 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
           category: section,
           sub_category: subCategory,
           section: section,
+          type: dbType, // Fixes the transactions_type_check error
           transaction_date: date,
           budget_month: month,
           budget_year: year,
@@ -63,7 +68,7 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-colors" style={{ background: t.overlay }}>
-      <div className="w-full max-w-md rounded-3xl p-6 shadow-2xl relative overflow-y-auto max-h-[90vh]" style={{ background: t.card, border: `1px solid ${t.border}`, color: t.text }}>
+      <div className="w-full max-w-md rounded-[2rem] p-5 md:p-8 shadow-2xl relative overflow-y-auto max-h-[90vh]" style={{ background: t.card, border: `1px solid ${t.border}`, color: t.text }}>
         <button onClick={onClose} className="absolute right-4 top-4 p-2 rounded-full transition-colors" style={{ color: t.textMuted }} onMouseEnter={e=>e.currentTarget.style.background=t.inputBg} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
           <X size={20} />
         </button>
@@ -80,7 +85,7 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
             <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: t.textMuted }}>Type</label>
             <div className="flex flex-wrap gap-2">
               {Object.keys(SECTIONS).map(sec => (
-                <button key={sec} onClick={() => handleSectionChange(sec)} className="px-3 py-2 rounded-lg text-sm font-semibold transition-all" style={{ background: section === sec ? t.accent : t.inputBg, color: section === sec ? (theme === "dark" ? "#000" : "#fff") : t.textMuted, border: `1px solid ${section === sec ? t.accent : t.border}` }}>
+                <button key={sec} onClick={() => handleSectionChange(sec)} className="px-3 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all" style={{ background: section === sec ? t.accent : t.inputBg, color: section === sec ? (theme === "dark" ? "#000" : "#fff") : t.textMuted, border: `1px solid ${section === sec ? t.accent : t.border}` }}>
                   {sec}
                 </button>
               ))}
