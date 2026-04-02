@@ -42,7 +42,6 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
 
   return (
     <section className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-      {/* Header */}
       <div className="px-4 md:px-6 py-4 border-b border-gray-800">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-gray-200 text-sm md:text-base">
@@ -73,7 +72,6 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
         </div>
       </div>
 
-      {/* ── Desktop table ── */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -146,7 +144,6 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
         </table>
       </div>
 
-      {/* ── Mobile card list ── */}
       <div className="md:hidden">
         {filtered.length === 0 && (
           <p className="text-center py-10 text-gray-600 text-sm">
