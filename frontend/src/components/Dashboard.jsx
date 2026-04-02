@@ -6,13 +6,15 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   ArcElement, Tooltip, Legend,
 } from "chart.js";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { useAuth } from "../context/AuthContext";
 import TransactionTable from "./TransactionTable";
 import TransactionForm  from "./TransactionForm";
 import BudgetPlanEditor from "./BudgetPlanEditor";
 import { 
   ArrowLeft, Wallet, FileText, Plus, PieChart, Receipt,
-  ArrowUpRight, ArrowDownRight, Star, Scale, Activity, Sun, Moon, LogOut, Target, LayoutDashboard
+  ArrowUpRight, ArrowDownRight, Star, Scale, Activity, Sun, Moon, LogOut, Target, LayoutDashboard, DownloadCloud
 } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -114,7 +116,6 @@ export default function Dashboard() {
   const hColor = t[healthInfo.color] || t.textMuted;
   const initials = user?.name?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-  // FIX: Isolated chart options so Doughnut doesn't get the Bar chart's grid lines
   const barOptions = {
     responsive: true, maintainAspectRatio: true,
     plugins: { legend: { labels: { color: t.textMuted, font: { size: 11, family: "'DM Sans', sans-serif", weight: "bold" } } }, tooltip: { callbacks: { label: ctx => " " + fmt(ctx.raw) } } },
@@ -136,7 +137,6 @@ export default function Dashboard() {
     labels: ["Bills", "Variable", "Savings", "Balance"],
     datasets: [{
       data: [ s.bills?.actual || 0, s.variableExpenses?.actual || 0, s.savings?.actual || 0, Math.max(0, (s.balance?.actual || 0)) ],
-      // FIX: Added distinct Blue color for Variable expenses to stop the color repetition
       backgroundColor: [t.red, t.blue, t.accent, t.green], 
       borderWidth: 0, hoverOffset: 4,
     }],
@@ -159,6 +159,106 @@ export default function Dashboard() {
     { label: "Savings", planned: s.savings?.planned, actual: s.savings?.actual, savings: true },
     { label: "Balance", planned: s.balance?.planned, actual: s.balance?.actual, balance: true },
   ];
+
+  // ── FULL COMPREHENSIVE PDF GENERATION ──
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Monthly Financial Report", 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`BudgetTracker • ${SHORT_MONTHS[month]} ${year} • ${user?.name || "Account Statement"}`, 14, 30);
+
+    // KPI Summary Section
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Account Summary", 14, 45);
+
+    doc.autoTable({
+      startY: 50,
+      head: [["Start Balance", "Total Income", "Total Spent", "Total Saved", "End Balance"]],
+      body: [[
+        fmt(s.startBalance),
+        fmt(s.income?.actual),
+        fmt(s.spent?.actual),
+        fmt(s.savings?.actual),
+        fmt(s.balance?.actual)
+      ]],
+      theme: "grid",
+      headStyles: { fillColor: [40, 40, 40], halign: 'center' },
+      bodyStyles: { halign: 'center', fontStyle: 'bold' }
+    });
+
+    // Cash Flow Table Section
+    let finalY = doc.lastAutoTable.finalY;
+    doc.setFontSize(14);
+    doc.text("Cash Flow Details", 14, finalY + 15);
+    
+    const cfBody = cashFlowRows.map(row => {
+      const diff = (row.actual ?? 0) - (row.planned ?? 0);
+      const sign = diff > 0 ? "+" : "";
+      return [
+        row.label.replace("↳ ", "  - "),
+        fmt(row.planned),
+        fmt(row.actual),
+        `${sign}${fmt(diff)}`
+      ];
+    });
+
+    doc.autoTable({
+      startY: finalY + 20,
+      head: [["Category", "Planned", "Actual", "Variance"]],
+      body: cfBody,
+      theme: "striped",
+      headStyles: { fillColor: currentTheme === "dark" ? [212, 175, 55] : [79, 70, 229] }
+    });
+
+    // Transactions Table Section
+    finalY = doc.lastAutoTable.finalY;
+    if (finalY > 230) {
+      doc.addPage();
+      finalY = 20;
+    } else {
+      finalY += 15;
+    }
+
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Transaction History", 14, finalY);
+
+    if (transactions.length > 0) {
+      const txBody = transactions.map(tx => {
+        const isInc = (tx.section || "").toLowerCase().includes("income");
+        const sign = isInc ? "+" : "-";
+        const date = new Date(tx.transaction_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+        return [
+          date,
+          tx.description || "—",
+          tx.sub_category || tx.category || "—",
+          `${sign}${fmt(tx.amount)}`
+        ];
+      });
+
+      doc.autoTable({
+        startY: finalY + 5,
+        head: [["Date", "Description", "Category", "Amount (GHS)"]],
+        body: txBody,
+        theme: "grid",
+        headStyles: { fillColor: [100, 100, 100] }
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text("No transactions logged for this month.", 14, finalY + 10);
+    }
+
+    // Download the PDF
+    doc.save(`BudgetTracker_Report_${SHORT_MONTHS[month]}_${year}.pdf`);
+  };
 
   if (loading) {
     return (
@@ -206,9 +306,16 @@ export default function Dashboard() {
             <button onClick={toggleTheme} className="hidden sm:flex p-2.5 rounded-full transition-transform hover:scale-110 shadow-sm glass-card" style={{ background: t.card, color: t.text, border: `1px solid ${t.cardBorder}` }}>
               {currentTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+
+            {/* DOWNLOAD PDF BUTTON */}
+            <button onClick={exportPDF} className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} onMouseEnter={e => e.currentTarget.style.borderColor = t.accent} onMouseLeave={e => e.currentTarget.style.borderColor = t.cardBorder}>
+              <DownloadCloud size={16} /> Report
+            </button>
+
             <button onClick={() => setShowPlan(true)} className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} onMouseEnter={e => e.currentTarget.style.borderColor = t.accent} onMouseLeave={e => e.currentTarget.style.borderColor = t.cardBorder}>
               <Target size={16} /> Plan
             </button>
+
             <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg transition-transform hover:scale-[1.02]" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
               <Plus size={16} strokeWidth={3} /> <span className="hidden sm:inline">Transaction</span>
             </button>
@@ -224,6 +331,9 @@ export default function Dashboard() {
                     <p className="text-xs font-semibold truncate mt-1" style={{ color: t.textMuted }}>{user?.email}</p>
                   </div>
                   <div className="p-2">
+                    <button onClick={exportPDF} className="md:hidden w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }} onMouseEnter={e => e.currentTarget.style.background = t.card} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <DownloadCloud size={16} style={{ color: t.textMuted }}/> Download PDF
+                    </button>
                     <button onClick={() => setShowPlan(true)} className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }} onMouseEnter={e => e.currentTarget.style.background = t.card} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                       <Target size={16} style={{ color: t.textMuted }}/> Edit Budget Plan
                     </button>
