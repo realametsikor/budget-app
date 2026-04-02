@@ -243,3 +243,6 @@ export function LoginPage() {
         Don't have an account?{" "}
         <Link to="/register" style={{ color: "#D4AF37" }} className="hover:underline">Sign up free</Link>
       </p>
+    </AuthLayout>
+  );
+}
