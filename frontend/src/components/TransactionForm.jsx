@@ -106,14 +106,12 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
         className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
           <h2 className="text-lg font-semibold text-gray-100">Add Transaction</h2>
           <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl leading-none">×</button>
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Date */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">Date</label>
             <input
@@ -124,7 +122,6 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
             />
           </div>
 
-          {/* Type buttons */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">Type</label>
             <div className="grid grid-cols-3 gap-2">
@@ -145,7 +142,6 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
             </div>
           </div>
 
-          {/* Sub-category */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">Sub-category</label>
             <select
@@ -159,7 +155,6 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
             </select>
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">Description</label>
             <input
@@ -171,7 +166,6 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
             />
           </div>
 
-          {/* Amount */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">Amount (GHS)</label>
             <div className="relative">
@@ -188,7 +182,6 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <p className="text-red-400 text-xs bg-red-900/30 border border-red-800 rounded-lg px-3 py-2">
               {error}
@@ -196,7 +189,6 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 pb-5 flex gap-3">
           <button
             type="button"
