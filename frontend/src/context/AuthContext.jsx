@@ -10,7 +10,7 @@ const THEME_COLORS = {
     bg: "#050505", navBg: "rgba(5,5,5,0.92)", text: "#f8fafc", textMuted: "#9ca3af",
     card: "rgba(255,255,255,0.03)", cardBorder: "rgba(255,255,255,0.08)",
     accent: "#D4AF37", accentBg: "rgba(212,175,55,0.1)",
-    green: "#4ade80", red: "#f87171", warning: "#fbbf24", chartGrid: "rgba(255,255,255,0.05)"
+    green: "#4ade80", red: "#f87171", warning: "#fb923c", chartGrid: "rgba(255,255,255,0.05)"
   },
   light: {
     bg: "#f8fafc", navBg: "rgba(248,250,252,0.92)", text: "#0f172a", textMuted: "#64748b",
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // Helper to safely parse JSON and catch HTML 404 errors
+  // Helper to safely parse JSON and catch HTML 404 errors (fixing laptop crash)
   const handleResponse = async (res) => {
     const text = await res.text();
     if (text.includes("Not Found") || text.includes("The page c")) {
