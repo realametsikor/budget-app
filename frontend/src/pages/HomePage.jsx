@@ -1,17 +1,22 @@
 // src/pages/HomePage.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { 
+  Scale, Banknote, Landmark, CalendarClock, HeartHandshake, 
+  PieChart, ShieldCheck, Smartphone, Users, Wallet 
+} from "lucide-react";
 
 const FEATURES = [
-  { icon: "⚖️", title: "Expected vs. Actual", desc: "Plan every category in advance. Watch real spending fill in automatically as the month progresses.", color: "#D4AF37" },
-  { icon: "💸", title: "Smart Cash Flow",      desc: "Income minus bills, debts, expenses, and savings — your real balance calculated instantly.", color: "#4ade80" },
-  { icon: "🏦", title: "Savings & Investments", desc: "Track Petra Savings, liquidity funds, and stock purchases separately. See what you actually saved.", color: "#60a5fa" },
-  { icon: "📋", title: "Bills & Due Dates",    desc: "Internet, Wi-Fi, dues, airtime — set due dates per bill so nothing ever catches you off guard.", color: "#f87171" },
-  { icon: "🙏", title: "Tithe & Giving",       desc: "Enter 10% once. It auto-calculates from your income budget every month — no manual math.", color: "#a78bfa" },
-  { icon: "📊", title: "Visual Reports",        desc: "Bar charts and progress bars for every category. Understand your money in seconds, not hours.", color: "#fb923c" },
-  { icon: "🔒", title: "Private by Default",   desc: "Your data belongs to you. No ads, no data selling, no third-party access. Ever.", color: "#34d399" },
-  { icon: "📱", title: "Works Everywhere",      desc: "Optimised for mobile and desktop. Open it on your phone at the market, your laptop at home.", color: "#f472b6" },
-  { icon: "✨", title: "Multi-User Ready",      desc: "Each account is completely isolated. Share the app with friends — everyone's data stays private.", color: "#D4AF37" },
+  { icon: <Scale size={20} />, title: "Expected vs. Actual", desc: "Plan every category in advance. Watch real spending fill in automatically as the month progresses.", color: "#D4AF37" },
+  { icon: <Banknote size={20} />, title: "Smart Cash Flow",      desc: "Income minus bills, debts, expenses, and savings — your real balance calculated instantly.", color: "#4ade80" },
+  { icon: <Landmark size={20} />, title: "Savings & Investments", desc: "Track Petra Savings, liquidity funds, and stock purchases separately. See what you actually saved.", color: "#60a5fa" },
+  { icon: <CalendarClock size={20} />, title: "Bills & Due Dates",    desc: "Internet, Wi-Fi, dues, airtime — set due dates per bill so nothing ever catches you off guard.", color: "#f87171" },
+  { icon: <HeartHandshake size={20} />, title: "Tithe & Giving",       desc: "Enter 10% once. It auto-calculates from your income budget every month — no manual math.", color: "#a78bfa" },
+  { icon: <PieChart size={20} />, title: "Visual Reports",        desc: "Bar charts and progress bars for every category. Understand your money in seconds, not hours.", color: "#fb923c" },
+  { icon: <ShieldCheck size={20} />, title: "Private by Default",   desc: "Your data belongs to you. No ads, no data selling, no third-party access. Ever.", color: "#34d399" },
+  { icon: <Smartphone size={20} />, title: "Works Everywhere",      desc: "Optimised for mobile and desktop. Open it on your phone at the market, your laptop at home.", color: "#f472b6" },
+  { icon: <Users size={20} />, title: "Multi-User Ready",      desc: "Each account is completely isolated. Share the app with friends — everyone's data stays private.", color: "#D4AF37" },
 ];
 
 const TESTIMONIALS = [
@@ -47,6 +52,7 @@ function StarRating({ count }) {
 
 export default function HomePage() {
   const navigate  = useNavigate();
+  const { user }  = useAuth(); // Check if user is logged in
   const canvasRef = useRef(null);
   const [activeFaq, setActiveFaq] = useState(null);
   const [visibleTestimonial, setVisibleTestimonial] = useState(0);
@@ -108,7 +114,9 @@ export default function HomePage() {
       {/* ── NAV ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 md:px-12 py-4" style={{ background: "rgba(8,8,8,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-          <span className="text-xl">💰</span>
+          <div className="w-8 h-8 rounded flex items-center justify-center bg-[#D4AF37] text-black">
+             <Wallet size={16} strokeWidth={2.5} />
+          </div>
           <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.15rem", fontWeight: 700, color: "#D4AF37" }}>BudgetTracker</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-400">
@@ -118,16 +126,28 @@ export default function HomePage() {
           <a href="#faq" className="hover:text-white transition-colors cursor-pointer">FAQ</a>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/login")} className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2">
-            Sign in
-          </button>
-          <button
-            onClick={() => navigate("/register")}
-            className="text-sm px-5 py-2.5 rounded-full font-semibold transition-all hover:scale-105"
-            style={{ background: "#D4AF37", color: "#080808" }}
-          >
-            Get started free
-          </button>
+          {user ? (
+            <button
+              onClick={() => navigate("/app")}
+              className="text-sm px-5 py-2.5 rounded-full font-semibold transition-all hover:scale-105 flex items-center gap-2"
+              style={{ background: "#D4AF37", color: "#080808" }}
+            >
+              Go to Dashboard
+            </button>
+          ) : (
+            <>
+              <button onClick={() => navigate("/login")} className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2">
+                Sign in
+              </button>
+              <button
+                onClick={() => navigate("/register")}
+                className="text-sm px-5 py-2.5 rounded-full font-semibold transition-all hover:scale-105"
+                style={{ background: "#D4AF37", color: "#080808" }}
+              >
+                Get started free
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -143,7 +163,7 @@ export default function HomePage() {
 
         <div className="relative z-10 max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium mb-8" style={{ background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)", color: "#D4AF37" }}>
-            ✦ Free forever · No credit card · Built for Ghana
+            <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse" /> Free forever · No credit card · Built for Ghana
           </div>
 
           <h1 className="text-white" style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.8rem, 8vw, 6rem)", fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.02em" }}>
@@ -157,22 +177,34 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <button
-              onClick={() => navigate("/register")}
-              className="w-full sm:w-auto px-8 py-4 rounded-full text-base font-semibold transition-all hover:scale-105"
-              style={{ background: "#D4AF37", color: "#080808", boxShadow: "0 0 40px rgba(212,175,55,0.25)" }}
-            >
-              Start tracking for free →
-            </button>
-            <button
-              onClick={() => navigate("/login")}
-              className="w-full sm:w-auto px-8 py-4 rounded-full text-base font-medium transition-all"
-              style={{ border: "1px solid rgba(255,255,255,0.15)", color: "#ccc" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.5)"; e.currentTarget.style.color = "#D4AF37"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#ccc"; }}
-            >
-              I already have an account
-            </button>
+            {user ? (
+              <button
+                onClick={() => navigate("/app")}
+                className="w-full sm:w-auto px-8 py-4 rounded-full text-base font-semibold transition-all hover:scale-105"
+                style={{ background: "#D4AF37", color: "#080808", boxShadow: "0 0 40px rgba(212,175,55,0.25)" }}
+              >
+                Return to Dashboard →
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="w-full sm:w-auto px-8 py-4 rounded-full text-base font-semibold transition-all hover:scale-105"
+                  style={{ background: "#D4AF37", color: "#080808", boxShadow: "0 0 40px rgba(212,175,55,0.25)" }}
+                >
+                  Start tracking for free →
+                </button>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="w-full sm:w-auto px-8 py-4 rounded-full text-base font-medium transition-all"
+                  style={{ border: "1px solid rgba(255,255,255,0.15)", color: "#ccc" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.5)"; e.currentTarget.style.color = "#D4AF37"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#ccc"; }}
+                >
+                  I already have an account
+                </button>
+              </>
+            )}
           </div>
 
           {/* Stats bar */}
@@ -295,7 +327,7 @@ export default function HomePage() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = `${f.color}44`; e.currentTarget.style.background = `rgba(255,255,255,0.04)`; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4" style={{ background: `${f.color}18` }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4" style={{ background: `${f.color}18`, color: f.color }}>
                 {f.icon}
               </div>
               <h3 className="text-sm font-semibold text-white mb-2">{f.title}</h3>
@@ -408,22 +440,34 @@ export default function HomePage() {
             Free to use. No ads. No credit card. Just clarity.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={() => navigate("/register")}
-              className="w-full sm:w-auto px-10 py-4 rounded-full text-base font-semibold transition-all hover:scale-105"
-              style={{ background: "#D4AF37", color: "#080808", boxShadow: "0 0 50px rgba(212,175,55,0.25)" }}
-            >
-              Create your free account →
-            </button>
-            <button
-              onClick={() => navigate("/login")}
-              className="w-full sm:w-auto px-8 py-4 rounded-full text-sm transition-all"
-              style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#9ca3af" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.4)"; e.currentTarget.style.color = "#D4AF37"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#9ca3af"; }}
-            >
-              Sign in instead
-            </button>
+            {user ? (
+              <button
+                onClick={() => navigate("/app")}
+                className="w-full sm:w-auto px-10 py-4 rounded-full text-base font-semibold transition-all hover:scale-105"
+                style={{ background: "#D4AF37", color: "#080808", boxShadow: "0 0 50px rgba(212,175,55,0.25)" }}
+              >
+                Go to Dashboard →
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="w-full sm:w-auto px-10 py-4 rounded-full text-base font-semibold transition-all hover:scale-105"
+                  style={{ background: "#D4AF37", color: "#080808", boxShadow: "0 0 50px rgba(212,175,55,0.25)" }}
+                >
+                  Create your free account →
+                </button>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="w-full sm:w-auto px-8 py-4 rounded-full text-sm transition-all"
+                  style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#9ca3af" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.4)"; e.currentTarget.style.color = "#D4AF37"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#9ca3af"; }}
+                >
+                  Sign in instead
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -434,7 +478,9 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-2 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-                <span>💰</span>
+                <div className="w-5 h-5 rounded flex items-center justify-center bg-[#D4AF37] text-black">
+                  <Wallet size={12} strokeWidth={2.5} />
+                </div>
                 <span style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700 }}>BudgetTracker</span>
               </div>
               <p className="text-xs" style={{ color: "#4b5563", maxWidth: 260, lineHeight: 1.7 }}>
