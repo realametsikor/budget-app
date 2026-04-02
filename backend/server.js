@@ -341,3 +341,4 @@ app.put("/api/budget-plans", authenticateToken, async (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`BudgetTracker API running on port ${PORT}`));
+
