@@ -1,7 +1,7 @@
 {
-  "name": "budget-frontend",
+  "name": "budget-tracker-frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,9 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.6.8",
     "chart.js": "^4.4.2",
-    "lucide-react": "^0.363.0",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
