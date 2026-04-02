@@ -1,6 +1,7 @@
 // src/components/TransactionTable.jsx
 import { useState } from "react";
-import { Search, ArrowDownRight, ArrowUpRight, Star, X, Trash2 } from "lucide-react";
+// 👇 Fixed: Added ReceiptText to the imports
+import { Search, ArrowDownRight, ArrowUpRight, Star, X, ReceiptText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
@@ -47,7 +48,9 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
       
       {/* Header & Controls */}
       <div className="px-6 py-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: t.border }}>
-        <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: t.text }}><ReceiptText size={20} color={t.accent} /> Logbook — {month} {year}</h3>
+        <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: t.text }}>
+          <ReceiptText size={20} color={t.accent} /> Logbook — {month} {year}
+        </h3>
         
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="flex gap-2 w-full sm:w-auto">
