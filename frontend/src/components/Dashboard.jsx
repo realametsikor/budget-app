@@ -27,14 +27,14 @@ const THEMES = {
     navBg: "rgba(5,5,5,0.7)", text: "#f8fafc", textMuted: "#9ca3af",
     card: "rgba(20,20,20,0.6)", cardBorder: "rgba(255,255,255,0.08)",
     accent: "#D4AF37", accentBg: "rgba(212,175,55,0.1)",
-    green: "#34d399", red: "#f87171", warning: "#fbbf24", chartGrid: "rgba(255,255,255,0.05)"
+    green: "#34d399", red: "#f87171", warning: "#fbbf24", blue: "#3b82f6", chartGrid: "rgba(255,255,255,0.05)"
   },
   light: {
     bgClass: "bg-[#f4f4f5]", meshClass: "mesh-bg-light",
     navBg: "rgba(244,244,245,0.7)", text: "#18181b", textMuted: "#71717a",
-    card: "rgba(255,255,255,0.7)", cardBorder: "rgba(0,0,0,0.06)",
+    card: "rgba(255,255,255,0.7)", cardBorder: "rgba(255,255,255,0.4)",
     accent: "#4f46e5", accentBg: "rgba(79,70,229,0.1)",
-    green: "#10b981", red: "#ef4444", warning: "#f59e0b", chartGrid: "rgba(0,0,0,0.05)"
+    green: "#10b981", red: "#ef4444", warning: "#f59e0b", blue: "#2563eb", chartGrid: "rgba(0,0,0,0.05)"
   }
 };
 
@@ -107,13 +107,15 @@ export default function Dashboard() {
   }, [showMenu]);
 
   const fmt = (n) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
+  const pct = (actual, planned) => planned === 0 ? 0 : Math.min(100, Math.round((actual / planned) * 100));
 
   const s = summary || {};
   const healthInfo = healthScore(s);
   const hColor = t[healthInfo.color] || t.textMuted;
   const initials = user?.name?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-  const chartOptions = {
+  // FIX: Isolated chart options so Doughnut doesn't get the Bar chart's grid lines
+  const barOptions = {
     responsive: true, maintainAspectRatio: true,
     plugins: { legend: { labels: { color: t.textMuted, font: { size: 11, family: "'DM Sans', sans-serif", weight: "bold" } } }, tooltip: { callbacks: { label: ctx => " " + fmt(ctx.raw) } } },
     scales: {
@@ -122,11 +124,21 @@ export default function Dashboard() {
     },
   };
 
+  const doughnutOptions = {
+    responsive: true, maintainAspectRatio: false, cutout: "75%",
+    plugins: { 
+      legend: { position: "top", labels: { color: t.textMuted, font: { size: 11, family: "'DM Sans', sans-serif", weight: "bold" }, padding: 20 } }, 
+      tooltip: { callbacks: { label: ctx => " " + fmt(ctx.raw) } } 
+    }
+  };
+
   const doughnutData = {
     labels: ["Bills", "Variable", "Savings", "Balance"],
     datasets: [{
       data: [ s.bills?.actual || 0, s.variableExpenses?.actual || 0, s.savings?.actual || 0, Math.max(0, (s.balance?.actual || 0)) ],
-      backgroundColor: [t.red, t.warning, t.accent, t.green], borderWidth: 0, hoverOffset: 4,
+      // FIX: Added distinct Blue color for Variable expenses to stop the color repetition
+      backgroundColor: [t.red, t.blue, t.accent, t.green], 
+      borderWidth: 0, hoverOffset: 4,
     }],
   };
 
@@ -175,34 +187,34 @@ export default function Dashboard() {
             <button onClick={() => navigate("/")} className="p-2 rounded-lg transition-colors hover:scale-110" style={{ color: t.textMuted }} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
               <ArrowLeft size={20} />
             </button>
-            <div onClick={() => navigate("/")} className="hidden sm:flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
+            <div onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-105" style={{ background: t.accent }}>
                 <Wallet size={16} strokeWidth={2.5} />
               </div>
-              <span className="font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif", color: t.text, letterSpacing: "0.5px" }}>BudgetTracker</span>
+              <span className="hidden sm:block font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif", color: t.text, letterSpacing: "0.5px" }}>BudgetTracker</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-1 max-w-sm justify-center">
-            <select value={month} onChange={e => setMonth(Number(e.target.value))} className="flex-1 max-w-[120px] rounded-xl px-3 py-2 text-sm font-bold focus:outline-none appearance-none transition-colors shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}>
+          <div className="flex items-center gap-3 flex-1 max-w-sm">
+            <select value={month} onChange={e => setMonth(Number(e.target.value))} className="flex-1 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none appearance-none transition-colors shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}>
               {MONTHS.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <input type="number" value={year} onChange={e => setYear(Number(e.target.value))} className="w-20 rounded-xl px-3 py-2 text-sm font-bold focus:outline-none text-center transition-colors shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} />
+            <input type="number" value={year} onChange={e => setYear(Number(e.target.value))} className="w-20 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none text-center transition-colors shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} />
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+          <div className="flex items-center gap-3 md:gap-4">
             <button onClick={toggleTheme} className="hidden sm:flex p-2.5 rounded-full transition-transform hover:scale-110 shadow-sm glass-card" style={{ background: t.card, color: t.text, border: `1px solid ${t.cardBorder}` }}>
               {currentTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button onClick={() => setShowPlan(true)} className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} onMouseEnter={e => e.currentTarget.style.borderColor = t.accent} onMouseLeave={e => e.currentTarget.style.borderColor = t.cardBorder}>
               <Target size={16} /> Plan
             </button>
-            <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 md:px-5 py-2.5 rounded-full text-sm font-bold shadow-lg transition-transform hover:scale-[1.02]" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
+            <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg transition-transform hover:scale-[1.02]" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
               <Plus size={16} strokeWidth={3} /> <span className="hidden sm:inline">Transaction</span>
             </button>
 
-            <div className="relative ml-1">
-              <button onClick={e => { e.stopPropagation(); setMenu(m => !m); }} className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-105 shadow-md" style={{ background: t.accentBg, color: t.accent, border: `2px solid ${t.accent}40` }}>
+            <div className="relative ml-2">
+              <button onClick={e => { e.stopPropagation(); setMenu(m => !m); }} className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-105 shadow-md" style={{ background: t.accentBg, color: t.accent, border: `2px solid ${t.accent}40` }}>
                 {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : initials}
               </button>
               {showMenu && (
@@ -229,69 +241,64 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10 relative z-10">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: t.text }}>
+            <h2 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: t.text }}>
               {greeting(user?.name)}.
             </h2>
-            <p className="text-xs md:text-sm mt-2 font-bold uppercase tracking-wider" style={{ color: t.textMuted }}>
+            <p className="text-sm mt-2 font-bold uppercase tracking-wider" style={{ color: t.textMuted }}>
               Viewing {SHORT_MONTHS[month]} {year} overview
             </p>
           </div>
           
-          <div className="flex items-center gap-4 px-5 py-3.5 rounded-2xl shadow-sm border transition-colors glass-card self-start sm:self-auto" style={{ background: t.card, borderColor: t.cardBorder }}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${hColor}15`, color: hColor }}>
-              <Activity size={20} />
+          <div className="flex items-center gap-5 px-6 py-4 rounded-2xl shadow-sm border transition-colors glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${hColor}15`, color: hColor }}>
+              <Activity size={24} />
             </div>
             <div>
-              <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1" style={{ color: t.textMuted }}>Health Score</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: t.textMuted }}>Health Score</p>
               <div className="flex items-center gap-2">
-                <span className="text-xl md:text-2xl font-bold leading-none" style={{ color: hColor }}>{healthInfo.score}</span>
-                <span className="text-xs md:text-sm font-bold leading-none" style={{ color: hColor }}>({healthInfo.label})</span>
+                <span className="text-2xl font-bold leading-none" style={{ color: hColor }}>{healthInfo.score}</span>
+                <span className="text-sm font-bold leading-none" style={{ color: hColor }}>({healthInfo.label})</span>
               </div>
             </div>
           </div>
         </div>
 
         {isEmpty && (
-          <div className="rounded-[2rem] p-8 md:p-12 text-center border-2 border-dashed glass-card shadow-lg" style={{ background: t.accentBg, borderColor: `${t.accent}40` }}>
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" style={{ background: t.card, color: t.accent, border: `1px solid ${t.cardBorder}` }}>
-              <PieChart size={32} strokeWidth={1.5} />
+          <div className="rounded-[2rem] p-12 text-center border-2 border-dashed glass-card shadow-lg" style={{ background: t.accentBg, borderColor: `${t.accent}40` }}>
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" style={{ background: t.card, color: t.accent, border: `1px solid ${t.cardBorder}` }}>
+              <PieChart size={40} strokeWidth={1.5} />
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: t.text }}>Begin your {SHORT_MONTHS[month]} budget</h3>
-            <p className="text-sm md:text-lg mb-8 max-w-lg mx-auto font-medium leading-relaxed" style={{ color: t.textMuted }}>
+            <h3 className="text-3xl font-bold mb-4" style={{ color: t.text }}>Begin your {SHORT_MONTHS[month]} budget</h3>
+            <p className="text-lg mb-8 max-w-lg mx-auto font-medium leading-relaxed" style={{ color: t.textMuted }}>
               Set your planned income and limits first. Your dashboard will dynamically build itself as you log transactions.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button onClick={() => setShowPlan(true)} className="w-full sm:w-auto px-8 md:px-10 py-4 rounded-full text-sm md:text-base font-bold shadow-xl transition-transform hover:scale-105" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
+              <button onClick={() => setShowPlan(true)} className="w-full sm:w-auto px-10 py-4 rounded-full text-base font-bold shadow-xl transition-transform hover:scale-105" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
                 Set Budget Plan
               </button>
             </div>
           </div>
         )}
 
-        {/* KPI CARDS (Truncated/Responsive Text Fix) */}
         {!isEmpty && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {[
-              { label: "Income", v: s.income?.actual, c: t.green, icon: <ArrowDownRight size={18} strokeWidth={3}/> },
-              { label: "Spent", v: s.spent?.actual, c: t.red, icon: <ArrowUpRight size={18} strokeWidth={3}/> },
-              { label: "Saved", v: s.savings?.actual, c: t.accent, icon: <Target size={18} strokeWidth={3}/> },
-              { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={18} strokeWidth={3}/> }
+              { label: "Income", v: s.income?.actual, c: t.green, icon: <ArrowDownRight size={20} strokeWidth={3}/> },
+              { label: "Spent", v: s.spent?.actual, c: t.red, icon: <ArrowUpRight size={20} strokeWidth={3}/> },
+              { label: "Saved", v: s.savings?.actual, c: t.accent, icon: <Target size={20} strokeWidth={3}/> },
+              { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={20} strokeWidth={3}/> }
             ].map((card, i) => (
-              <div key={i} className="rounded-[1.5rem] md:rounded-3xl p-4 md:p-8 border shadow-lg transition-transform hover:-translate-y-1 relative overflow-hidden glass-card flex flex-col justify-between" style={{ background: t.card, borderColor: t.cardBorder }}>
-                <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none" style={{ background: card.c }} />
-                <div className="flex items-center justify-between mb-4 md:mb-8">
-                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest" style={{ color: t.textMuted }}>{card.label}</span>
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-full flex items-center justify-center shadow-inner flex-shrink-0" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
+              <div key={i} className="rounded-3xl p-6 md:p-8 border shadow-lg transition-transform hover:-translate-y-2 relative overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+                <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none" style={{ background: card.c }} />
+                <div className="flex items-center justify-between mb-8">
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: t.textMuted }}>{card.label}</span>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
                 </div>
-                <div className="w-full overflow-hidden">
-                  <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight truncate whitespace-nowrap" style={{ color: t.text }}>
-                    {fmt(card.v)}
-                  </p>
-                </div>
+                <p className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: t.text }}>{fmt(card.v)}</p>
               </div>
             ))}
           </div>
@@ -305,10 +312,10 @@ export default function Dashboard() {
             ].map((tab) => (
               <button
                 key={tab.id} onClick={() => setTab(tab.id)}
-                className="px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold flex items-center gap-2 md:gap-3 transition-colors relative uppercase tracking-wider"
+                className="px-6 py-4 text-sm font-bold flex items-center gap-3 transition-colors relative uppercase tracking-wider"
                 style={{ color: activeTab === tab.id ? t.text : t.textMuted }}
               >
-                <span style={{ color: activeTab === tab.id ? t.accent : t.textMuted }}>{tab.icon}</span> <span className="hidden sm:inline">{tab.label}</span>
+                <span style={{ color: activeTab === tab.id ? t.accent : t.textMuted }}>{tab.icon}</span> {tab.label}
                 {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full shadow-[0_0_10px_rgba(212,175,55,0.5)]" style={{ background: t.accent }} />}
               </button>
             ))}
@@ -318,64 +325,64 @@ export default function Dashboard() {
         {activeTab === "overview" && !isEmpty && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* CASH FLOW TABLE (Responsive Fix) */}
-            <div className="lg:col-span-2 rounded-[2rem] border shadow-lg overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-              <div className="px-5 md:px-8 py-5 border-b flex items-center justify-between" style={{ borderColor: t.cardBorder, background: currentTheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)" }}>
-                <h3 className="font-bold text-base md:text-lg flex items-center gap-3" style={{ color: t.text }}><PieChart size={20} color={t.accent} /> Cash Flow Details</h3>
+            {/* Desktop Table View */}
+            <div className="hidden lg:block lg:col-span-2 rounded-[2rem] border shadow-lg overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+              <div className="px-8 py-6 border-b flex items-center justify-between" style={{ borderColor: t.cardBorder, background: currentTheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)" }}>
+                <h3 className="font-bold text-lg flex items-center gap-3" style={{ color: t.text }}><PieChart size={20} color={t.accent} /> Cash Flow Details</h3>
               </div>
-              
-              {/* Desktop View */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-xs uppercase tracking-widest" style={{ color: t.textMuted, borderBottom: `1px solid ${t.cardBorder}` }}>
-                      <th className="text-left px-8 py-5 font-bold">Category</th>
-                      <th className="text-right px-8 py-5 font-bold">Planned</th>
-                      <th className="text-right px-8 py-5 font-bold">Actual</th>
-                      <th className="text-right px-8 py-5 font-bold">Variance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: t.cardBorder }}>
-                    {cashFlowRows.map((row, i) => {
-                      const diff = (row.actual ?? 0) - (row.planned ?? 0);
-                      const isOver = row.negative ? diff > 0 : diff < 0;
-                      return (
-                        <tr key={i} className="hover:opacity-80 transition-opacity" style={{ background: row.balance ? (currentTheme==="dark"?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)") : "transparent" }}>
-                          <td className="px-8 py-5 font-bold flex items-center gap-3" style={{ paddingLeft: row.indent ? "3.5rem" : "2rem", color: row.indent ? t.textMuted : t.text }}>
-                            {row.indent && <div className="w-1.5 h-1.5 rounded-full" style={{ background: t.textMuted }}/>} {row.label}
-                          </td>
-                          <td className="text-right px-8 py-5 font-bold" style={{ color: t.textMuted }}>{fmt(row.planned)}</td>
-                          <td className="text-right px-8 py-5 font-bold text-base" style={{ color: row.positive ? t.green : row.negative ? t.red : row.savings ? t.accent : t.text }}>{fmt(row.actual)}</td>
-                          <td className="text-right px-8 py-5 font-bold" style={{ color: diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green) }}>
-                            {diff > 0 ? "+" : ""}{fmt(diff)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-widest" style={{ color: t.textMuted, borderBottom: `1px solid ${t.cardBorder}` }}>
+                    <th className="text-left px-8 py-5 font-bold">Category</th>
+                    <th className="text-right px-8 py-5 font-bold">Planned</th>
+                    <th className="text-right px-8 py-5 font-bold">Actual</th>
+                    <th className="text-right px-8 py-5 font-bold">Variance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: t.cardBorder }}>
+                  {cashFlowRows.map((row, i) => {
+                    const diff = (row.actual ?? 0) - (row.planned ?? 0);
+                    const isOver = row.negative ? diff > 0 : diff < 0;
+                    return (
+                      <tr key={i} className="hover:opacity-80 transition-opacity" style={{ background: row.balance ? (currentTheme==="dark"?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)") : "transparent" }}>
+                        <td className="px-8 py-5 font-bold flex items-center gap-3" style={{ paddingLeft: row.indent ? "3.5rem" : "2rem", color: row.indent ? t.textMuted : t.text }}>
+                          {row.indent && <div className="w-1.5 h-1.5 rounded-full" style={{ background: t.textMuted }}/>} {row.label}
+                        </td>
+                        <td className="text-right px-8 py-5 font-medium" style={{ color: t.textMuted }}>{fmt(row.planned)}</td>
+                        <td className="text-right px-8 py-5 font-bold text-base" style={{ color: row.positive ? t.green : row.negative ? t.red : row.savings ? t.accent : t.text }}>{fmt(row.actual)}</td>
+                        <td className="text-right px-8 py-5 font-bold" style={{ color: diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green) }}>
+                          {diff > 0 ? "+" : ""}{fmt(diff)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              {/* Mobile View (No horizontal scrolling!) */}
-              <div className="md:hidden flex flex-col divide-y" style={{ borderColor: t.cardBorder }}>
+            {/* Mobile List View - Perfect Stacked Layout */}
+            <div className="lg:hidden col-span-1 rounded-[2rem] border shadow-lg overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+              <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: t.cardBorder, background: currentTheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)" }}>
+                <h3 className="font-bold text-base flex items-center gap-2" style={{ color: t.text }}><PieChart size={18} color={t.accent} /> Cash Flow Details</h3>
+              </div>
+              <div className="divide-y" style={{ borderColor: t.cardBorder }}>
                 {cashFlowRows.map((row, i) => {
                   const diff = (row.actual ?? 0) - (row.planned ?? 0);
                   const isOver = row.negative ? diff > 0 : diff < 0;
+                  const actualColor = row.positive ? t.green : row.negative ? t.red : row.savings ? t.accent : t.text;
+                  const diffColor = diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green);
+
                   return (
-                    <div key={i} className="px-5 py-4 flex flex-col gap-2" style={{ background: row.balance ? (currentTheme==="dark"?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)") : "transparent" }}>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-sm flex items-center gap-2" style={{ paddingLeft: row.indent ? "1rem" : "0", color: row.indent ? t.textMuted : t.text }}>
+                    <div key={i} className="p-5" style={{ background: row.balance ? (currentTheme==="dark"?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)") : "transparent" }}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-bold flex items-center gap-2" style={{ color: t.text, marginLeft: row.indent ? "1rem" : "0" }}>
                           {row.indent && <div className="w-1.5 h-1.5 rounded-full" style={{ background: t.textMuted }}/>} {row.label}
                         </span>
-                        <span className="font-bold text-base" style={{ color: row.positive ? t.green : row.negative ? t.red : row.savings ? t.accent : t.text }}>
-                          {fmt(row.actual)}
-                        </span>
+                        <span className="font-bold text-base" style={{ color: actualColor }}>{fmt(row.actual)}</span>
                       </div>
-                      <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
-                        <span style={{ color: t.textMuted }}>Plan: {fmt(row.planned)}</span>
-                        <span style={{ color: diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green) }}>
-                          Diff: {diff > 0 ? "+" : ""}{fmt(diff)}
-                        </span>
+                      <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
+                        <span style={{ color: t.textMuted }}>PLAN: {fmt(row.planned)}</span>
+                        <span style={{ color: diffColor }}>DIFF: {diff > 0 ? "+" : ""}{fmt(diff)}</span>
                       </div>
                     </div>
                   );
@@ -384,13 +391,15 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[2rem] border p-6 md:p-8 shadow-lg glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-                <h3 className="font-bold text-base md:text-lg mb-6 md:mb-8" style={{ color: t.text }}>Spending Breakdown</h3>
-                <Doughnut data={doughnutData} options={{ ...chartOptions, cutout: "75%" }} />
+              <div className="rounded-[2rem] border p-6 md:p-8 shadow-lg glass-card h-80 flex flex-col" style={{ background: t.card, borderColor: t.cardBorder }}>
+                <h3 className="font-bold text-lg mb-4 flex-shrink-0" style={{ color: t.text }}>Spending Breakdown</h3>
+                <div className="flex-1 relative min-h-0">
+                  <Doughnut data={doughnutData} options={doughnutOptions} />
+                </div>
               </div>
               <div className="rounded-[2rem] border p-6 md:p-8 shadow-lg glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-                <h3 className="font-bold text-base md:text-lg mb-6 md:mb-8" style={{ color: t.text }}>Plan vs Actual</h3>
-                <Bar data={barData} options={chartOptions} />
+                <h3 className="font-bold text-lg mb-6" style={{ color: t.text }}>Plan vs Actual</h3>
+                <Bar data={barData} options={barOptions} />
               </div>
             </div>
           </div>
