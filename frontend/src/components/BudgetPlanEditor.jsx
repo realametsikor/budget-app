@@ -1,4 +1,3 @@
-// src/components/BudgetPlanEditor.jsx
 import { useEffect, useState } from "react";
 
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
@@ -47,7 +46,7 @@ export default function BudgetPlanEditor({ month, year, onClose, authFetch }) {
   const [plans,       setPlans]     = useState({});
   const [dates,       setDates]     = useState({});
   const [startBal,    setStartBal]  = useState("");
-  const [titheMode,   setTitheMode] = useState("pct"); // "pct" | "fixed"
+  const [titheMode,   setTitheMode] = useState("pct");
   const [tithePct,    setTithePct]  = useState(10);
   const [saving,      setSaving]    = useState({});
   const [saved,       setSaved]     = useState({});
@@ -153,7 +152,6 @@ export default function BudgetPlanEditor({ month, year, onClose, authFetch }) {
         </div>
 
         <div className="px-6 py-5 space-y-6 max-h-[75vh] overflow-y-auto">
-          {/* ── Start Balance ── */}
           <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-200">🏦 Start Balance</label>
