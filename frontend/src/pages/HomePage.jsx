@@ -3,20 +3,22 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { 
-  Wallet, ShieldCheck, PieChart, Target, ArrowRight, 
-  CreditCard, BarChart3, Lock, CheckCircle2, ChevronRight, Sun, Moon 
+  Wallet, ShieldCheck, PieChart, Target, ArrowRight, BookOpen,
+  CreditCard, BarChart3, Lock, CheckCircle2, ChevronRight, Sun, Moon, Goal, ReceiptText, Users, Award, Zap
 } from "lucide-react";
 
 const THEMES = {
   dark: {
     bgClass: "bg-[#050505]", meshClass: "mesh-bg-dark",
     navBg: "rgba(5,5,5,0.8)", text: "#f8fafc", textMuted: "#9ca3af",
-    card: "rgba(20,20,20,0.6)", cardBorder: "rgba(255,255,255,0.08)", accent: "#D4AF37"
+    card: "rgba(20,20,20,0.6)", cardBorder: "rgba(255,255,255,0.08)", accent: "#D4AF37", accentBg: "rgba(212,175,55,0.1)",
+    green: "#34d399", red: "#f87171"
   },
   light: {
     bgClass: "bg-[#f4f4f5]", meshClass: "mesh-bg-light",
     navBg: "rgba(244,244,245,0.8)", text: "#18181b", textMuted: "#71717a",
-    card: "rgba(255,255,255,0.7)", cardBorder: "rgba(255,255,255,0.4)", accent: "#4f46e5"
+    card: "rgba(255,255,255,0.7)", cardBorder: "rgba(255,255,255,0.4)", accent: "#4f46e5", accentBg: "rgba(79,70,229,0.1)",
+    green: "#10b981", red: "#ef4444"
   }
 };
 
@@ -24,7 +26,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { user, theme, toggleTheme } = useAuth();
   const [scrolled, setScrolled] = useState(false);
-  const t = THEMES[theme];
+  const t = THEMES[theme || "dark"];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -36,7 +38,6 @@ export default function HomePage() {
     <div className={`min-h-screen ${t.bgClass} ${t.meshClass} transition-colors duration-700 overflow-x-hidden`} style={{ color: t.text, fontFamily: "'DM Sans', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       
-      {/* Dynamic CSS injected for animations and mesh backgrounds */}
       <style>{`
         .glass-card { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
@@ -60,6 +61,7 @@ export default function HomePage() {
           
           <div className="hidden md:flex items-center gap-10 text-sm font-semibold uppercase tracking-wider" style={{ color: t.textMuted }}>
             <a href="#features" className="hover:text-current transition-colors">Features</a>
+            <a href="#who" className="hover:text-current transition-colors">For You</a>
             <a href="#security" className="hover:text-current transition-colors">Security</a>
           </div>
 
@@ -110,47 +112,105 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* ── INTERACTIVE 3D FLOATING MOCKUP ── */}
-        <div className="mt-24 w-full max-w-5xl relative h-[400px] md:h-[500px]">
+        {/* ── INTERACTIVE 3D FLOATING MOCKUP (Upgraded with Detail) ── */}
+        <div className="mt-24 w-full max-w-5xl relative h-[450px] md:h-[550px]">
           {/* Main Window */}
-          <div className="absolute top-0 left-[10%] right-[10%] h-full rounded-t-3xl border shadow-2xl glass-card z-10 animate-float overflow-hidden" style={{ background: t.card, borderColor: t.cardBorder }}>
-            <div className="h-12 border-b flex items-center px-6 gap-2" style={{ borderColor: t.cardBorder, background: theme === "dark" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)" }}>
+          <div className="absolute top-0 left-[5%] right-[5%] h-full rounded-t-3xl border shadow-2xl glass-card z-10 animate-float overflow-hidden flex flex-col" style={{ background: t.card, borderColor: t.cardBorder }}>
+            <div className="h-12 border-b flex items-center px-6 gap-2 flex-shrink-0" style={{ borderColor: t.cardBorder, background: theme === "dark" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)" }}>
               <div className="w-3 h-3 rounded-full bg-red-500/80" /><div className="w-3 h-3 rounded-full bg-yellow-500/80" /><div className="w-3 h-3 rounded-full bg-green-500/80" />
             </div>
-            <div className="p-8 grid grid-cols-3 gap-6 opacity-60">
-              <div className="col-span-2 rounded-xl h-40 border" style={{ background: t.cardBorder, borderColor: t.cardBorder }} />
-              <div className="col-span-1 rounded-xl h-40 border flex items-center justify-center" style={{ background: t.cardBorder, borderColor: t.cardBorder }}>
-                <div className="w-24 h-24 rounded-full border-[8px] border-transparent" style={{ borderTopColor: t.accent, borderRightColor: t.accent }} />
+            <div className="p-8 grid grid-cols-2 gap-8 opacity-90 flex-1">
+              {/* Fake Chart Area */}
+              <div className="col-span-2 md:col-span-1 rounded-2xl h-48 border flex flex-col items-center justify-center relative overflow-hidden" style={{ background: t.cardBorder, borderColor: t.cardBorder }}>
+                 <div className="w-24 h-24 rounded-full border-[14px] border-transparent" style={{ borderTopColor: t.accent, borderRightColor: t.green, borderLeftColor: t.red, transform: "rotate(45deg)" }} />
+                 <div className="absolute bottom-4 left-4 right-4 flex gap-2">
+                   <div className="h-2.5 flex-1 rounded" style={{ background: t.green }} />
+                   <div className="h-2.5 flex-[0.8] rounded" style={{ background: t.accent }} />
+                   <div className="h-2.5 flex-[0.4] rounded" style={{ background: t.red }} />
+                 </div>
+              </div>
+              {/* Fake List Area */}
+              <div className="col-span-2 md:col-span-1 space-y-5">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full" style={{ background: t.accentBg }} />
+                    <div className="space-y-2.5 flex-1">
+                       <div className="h-2.5 w-full rounded" style={{ background: t.textMuted, opacity: 0.7 }} />
+                       <div className="h-2 w-2/3 rounded" style={{ background: t.textMuted, opacity: 0.4 }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
+
           {/* Floating Widget 1 */}
-          <div className="absolute bottom-10 left-0 md:left-[-5%] w-64 p-6 rounded-2xl border shadow-2xl glass-card z-20 animate-float-delayed" style={{ background: t.card, borderColor: t.cardBorder }}>
+          <div className="absolute bottom-10 left-[-2%] md:left-[0%] w-64 p-6 rounded-2xl border shadow-2xl glass-card z-20 animate-float-delayed" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="flex items-center gap-4 mb-4">
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `${t.accent}20`, color: t.accent }}><Target size={20}/></div>
               <div className="flex-1 h-3 rounded" style={{ background: t.cardBorder }} />
             </div>
-            <div className="h-8 w-2/3 rounded mb-2" style={{ background: t.cardBorder }} />
-            <div className="h-2 w-full rounded" style={{ background: t.cardBorder }} />
+            <div className="h-8 w-2/3 rounded mb-3" style={{ background: t.cardBorder }} />
+            <div className="h-2.5 w-full rounded" style={{ background: t.accent }} />
           </div>
+
           {/* Floating Widget 2 */}
-          <div className="absolute top-20 right-0 md:right-[-5%] w-72 p-6 rounded-2xl border shadow-2xl glass-card z-20 animate-float" style={{ background: t.card, borderColor: t.cardBorder }}>
-             <h4 className="font-bold mb-4" style={{ color: t.text }}>Recent Transactions</h4>
+          <div className="absolute top-20 right-[-2%] md:right-[0%] w-72 p-6 rounded-2xl border shadow-2xl glass-card z-20 animate-float" style={{ background: t.card, borderColor: t.cardBorder }}>
+             <h4 className="font-bold mb-5" style={{ color: t.text }}>Recent Transactions</h4>
              {[1,2,3].map(i => (
-               <div key={i} className="flex items-center justify-between mb-3 last:mb-0">
+               <div key={i} className="flex items-center justify-between mb-4 last:mb-0">
                  <div className="flex gap-3 items-center">
                    <div className="w-8 h-8 rounded-full" style={{ background: t.cardBorder }} />
                    <div className="w-16 h-2 rounded" style={{ background: t.cardBorder }} />
                  </div>
-                 <div className="w-12 h-2 rounded" style={{ background: t.cardBorder }} />
+                 <div className="w-12 h-2.5 rounded" style={{ background: i===1?t.green:t.textMuted }} />
                </div>
              ))}
           </div>
         </div>
       </section>
 
+      {/* ── CORE PHILOSOPHY (New Info Section) ── */}
+      <section className="py-24 px-6 border-y" style={{ borderColor: t.cardBorder, background: t.cardBorder }}>
+        <div className="max-w-4xl mx-auto text-center">
+           <BookOpen size={32} className="mx-auto mb-6" style={{ color: t.accent }} />
+           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 700 }}>
+             Why we built this.
+           </h2>
+           <p className="mt-8 text-lg font-medium leading-relaxed" style={{ color: t.textMuted }}>
+             We believe that financial anxiety comes from a lack of clarity. Most budgeting apps are either too complex, requiring a degree in accounting, or too simple, lacking the depth you need to truly grow your wealth. We built BudgetTracker to be the perfect middle ground: deeply powerful, yet profoundly simple.
+           </p>
+        </div>
+      </section>
+
+      {/* ── WHO IS IT FOR? (New Info Section) ── */}
+      <section id="who" className="py-32 px-6 max-w-7xl mx-auto">
+        <div className="mb-20 text-center">
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.5rem, 5vw, 4rem)", fontWeight: 700 }}>
+            Built for <span className="italic" style={{ color: t.accent }}>your</span> lifestyle.
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           <div className="rounded-[2rem] p-10 border shadow-sm glass-card hover:scale-105 transition-transform" style={{ background: t.card, borderColor: t.cardBorder }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-6" style={{ background: t.accentBg, color: t.accent }}><Zap size={24} /></div>
+              <h3 className="text-xl font-bold mb-3">The Freelancer</h3>
+              <p className="font-medium leading-relaxed" style={{ color: t.textMuted }}>Variable income? No problem. Update your paychecks dynamically and watch your entire month recalculate instantly.</p>
+           </div>
+           <div className="rounded-[2rem] p-10 border shadow-sm glass-card hover:scale-105 transition-transform" style={{ background: t.card, borderColor: t.cardBorder }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-6" style={{ background: t.accentBg, color: t.accent }}><Users size={24} /></div>
+              <h3 className="text-xl font-bold mb-3">The Family Planner</h3>
+              <p className="font-medium leading-relaxed" style={{ color: t.textMuted }}>Manage groceries, school fees, and utilities. Zero-based budgeting ensures every family cedi is accounted for.</p>
+           </div>
+           <div className="rounded-[2rem] p-10 border shadow-sm glass-card hover:scale-105 transition-transform" style={{ background: t.card, borderColor: t.cardBorder }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-6" style={{ background: t.accentBg, color: t.accent }}><Award size={24} /></div>
+              <h3 className="text-xl font-bold mb-3">The Wealth Builder</h3>
+              <p className="font-medium leading-relaxed" style={{ color: t.textMuted }}>Isolate your investments, liquidity funds, and tithes. Keep your savings strictly separated from your spending pool.</p>
+           </div>
+        </div>
+      </section>
+
       {/* ── BENTO BOX FEATURES ── */}
-      <section id="features" className="py-32 px-6 max-w-7xl mx-auto">
+      <section id="features" className="py-32 px-6 max-w-7xl mx-auto border-t" style={{ borderColor: t.cardBorder }}>
         <div className="mb-20 text-center md:text-left">
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.5rem, 5vw, 4rem)", fontWeight: 700 }}>
             Precision tools for<br />
@@ -159,7 +219,6 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Feature 1 - Large */}
           <div className="md:col-span-2 rounded-[2rem] p-10 md:p-12 border shadow-lg glass-card group transition-transform hover:scale-[1.02]" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md mb-8 transition-transform group-hover:-translate-y-2" style={{ background: t.accent, color: theme === "dark" ? "#000" : "#fff" }}>
               <PieChart size={28} strokeWidth={2} />
@@ -170,7 +229,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Feature 2 - Small */}
           <div className="rounded-[2rem] p-10 border shadow-lg glass-card group transition-transform hover:scale-[1.02]" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:-translate-y-2" style={{ background: `${t.accent}20`, color: t.accent }}>
               <Target size={24} strokeWidth={2} />
@@ -181,7 +239,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Feature 3 - Small */}
           <div className="rounded-[2rem] p-10 border shadow-lg glass-card group transition-transform hover:scale-[1.02]" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:-translate-y-2" style={{ background: `${t.accent}20`, color: t.accent }}>
               <CreditCard size={24} strokeWidth={2} />
@@ -192,7 +249,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Feature 4 - Large */}
           <div className="md:col-span-2 rounded-[2rem] p-10 md:p-12 border shadow-lg glass-card group transition-transform hover:scale-[1.02]" style={{ background: t.card, borderColor: t.cardBorder }}>
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md mb-8 transition-transform group-hover:-translate-y-2" style={{ background: t.accent, color: theme === "dark" ? "#000" : "#fff" }}>
               <BarChart3 size={28} strokeWidth={2} />
