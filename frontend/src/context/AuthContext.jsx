@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
-const API = "[https://budget-app-backend-gn8r.onrender.com/api](https://budget-app-backend-gn8r.onrender.com/api)";
+const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -98,4 +98,3 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
-
