@@ -108,8 +108,14 @@ export default function Dashboard() {
     return () => document.removeEventListener("click", close);
   }, [showMenu]);
 
+  // Standard formatter for the UI (uses Cedi symbol)
   const fmt = (n) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
-  const pct = (actual, planned) => planned === 0 ? 0 : Math.min(100, Math.round((actual / planned) * 100));
+  
+  // Safe formatter for the PDF (uses GHS text to prevent font encoding errors)
+  const pdfFmt = (n) => {
+    const val = Number(n) || 0;
+    return "GHS " + val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   const s = summary || {};
   const healthInfo = healthScore(s);
@@ -160,7 +166,7 @@ export default function Dashboard() {
     { label: "Balance", planned: s.balance?.planned, actual: s.balance?.actual, balance: true },
   ];
 
-  // ── FULL COMPREHENSIVE PDF GENERATION ──
+  // ── FIX: PDF GENERATION WITH "GHS" TEXT INSTEAD OF SYMBOL ──
   const exportPDF = () => {
     const doc = new jsPDF();
     
@@ -182,11 +188,11 @@ export default function Dashboard() {
       startY: 50,
       head: [["Start Balance", "Total Income", "Total Spent", "Total Saved", "End Balance"]],
       body: [[
-        fmt(s.startBalance),
-        fmt(s.income?.actual),
-        fmt(s.spent?.actual),
-        fmt(s.savings?.actual),
-        fmt(s.balance?.actual)
+        pdfFmt(s.startBalance),
+        pdfFmt(s.income?.actual),
+        pdfFmt(s.spent?.actual),
+        pdfFmt(s.savings?.actual),
+        pdfFmt(s.balance?.actual)
       ]],
       theme: "grid",
       headStyles: { fillColor: [40, 40, 40], halign: 'center' },
@@ -203,9 +209,9 @@ export default function Dashboard() {
       const sign = diff > 0 ? "+" : "";
       return [
         row.label.replace("↳ ", "  - "),
-        fmt(row.planned),
-        fmt(row.actual),
-        `${sign}${fmt(diff)}`
+        pdfFmt(row.planned),
+        pdfFmt(row.actual),
+        `${sign}${pdfFmt(diff)}`
       ];
     });
 
@@ -239,13 +245,13 @@ export default function Dashboard() {
           date,
           tx.description || "—",
           tx.sub_category || tx.category || "—",
-          `${sign}${fmt(tx.amount)}`
+          `${sign}${pdfFmt(tx.amount)}`
         ];
       });
 
       doc.autoTable({
         startY: finalY + 5,
-        head: [["Date", "Description", "Category", "Amount (GHS)"]],
+        head: [["Date", "Description", "Category", "Amount"]],
         body: txBody,
         theme: "grid",
         headStyles: { fillColor: [100, 100, 100] }
@@ -256,7 +262,6 @@ export default function Dashboard() {
       doc.text("No transactions logged for this month.", 14, finalY + 10);
     }
 
-    // Download the PDF
     doc.save(`BudgetTracker_Report_${SHORT_MONTHS[month]}_${year}.pdf`);
   };
 
@@ -281,66 +286,65 @@ export default function Dashboard() {
 
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-40 border-b glass-card transition-colors" style={{ background: t.navBg, borderColor: t.cardBorder }}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => navigate("/")} className="p-2 rounded-lg transition-colors hover:scale-110" style={{ color: t.textMuted }} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
+            <button onClick={() => navigate("/")} className="p-1.5 md:p-2 rounded-lg transition-colors hover:scale-110" style={{ color: t.textMuted }}>
               <ArrowLeft size={20} />
             </button>
-            <div onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
-              <div className="w-8 h-8 rounded flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-105" style={{ background: t.accent }}>
-                <Wallet size={16} strokeWidth={2.5} />
+            <div onClick={() => navigate("/")} className="flex items-center gap-2 md:gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
+              <div className="w-7 h-7 md:w-8 md:h-8 rounded flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-105" style={{ background: t.accent }}>
+                <Wallet size={14} strokeWidth={2.5} />
               </div>
-              <span className="hidden sm:block font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif", color: t.text, letterSpacing: "0.5px" }}>BudgetTracker</span>
+              <span className="hidden sm:block font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif", color: t.text }}>BudgetTracker</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-1 max-w-sm">
-            <select value={month} onChange={e => setMonth(Number(e.target.value))} className="flex-1 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none appearance-none transition-colors shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}>
+          <div className="flex items-center gap-2 flex-1 max-w-[200px] md:max-w-sm">
+            <select value={month} onChange={e => setMonth(Number(e.target.value))} className="flex-1 rounded-xl px-2 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold focus:outline-none appearance-none shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}>
               {MONTHS.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <input type="number" value={year} onChange={e => setYear(Number(e.target.value))} className="w-20 rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none text-center transition-colors shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} />
+            <input type="number" value={year} onChange={e => setYear(Number(e.target.value))} className="w-16 md:w-20 rounded-xl px-2 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold focus:outline-none text-center shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} />
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4">
-            <button onClick={toggleTheme} className="hidden sm:flex p-2.5 rounded-full transition-transform hover:scale-110 shadow-sm glass-card" style={{ background: t.card, color: t.text, border: `1px solid ${t.cardBorder}` }}>
+          <div className="flex items-center gap-2 md:gap-4">
+            <button onClick={toggleTheme} className="hidden sm:flex p-2 md:p-2.5 rounded-full transition-transform hover:scale-110 shadow-sm glass-card" style={{ background: t.card, color: t.text, border: `1px solid ${t.cardBorder}` }}>
               {currentTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            {/* DOWNLOAD PDF BUTTON */}
-            <button onClick={exportPDF} className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} onMouseEnter={e => e.currentTarget.style.borderColor = t.accent} onMouseLeave={e => e.currentTarget.style.borderColor = t.cardBorder}>
+            <button onClick={exportPDF} className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}>
               <DownloadCloud size={16} /> Report
             </button>
 
-            <button onClick={() => setShowPlan(true)} className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }} onMouseEnter={e => e.currentTarget.style.borderColor = t.accent} onMouseLeave={e => e.currentTarget.style.borderColor = t.cardBorder}>
+            <button onClick={() => setShowPlan(true)} className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] shadow-sm glass-card" style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}>
               <Target size={16} /> Plan
             </button>
 
-            <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg transition-transform hover:scale-[1.02]" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
+            <button onClick={() => setShowForm(true)} className="flex items-center gap-1 px-3 md:px-5 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold shadow-lg transition-transform hover:scale-[1.02]" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
               <Plus size={16} strokeWidth={3} /> <span className="hidden sm:inline">Transaction</span>
             </button>
 
-            <div className="relative ml-2">
-              <button onClick={e => { e.stopPropagation(); setMenu(m => !m); }} className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-105 shadow-md" style={{ background: t.accentBg, color: t.accent, border: `2px solid ${t.accent}40` }}>
+            <div className="relative ml-1 md:ml-2">
+              <button onClick={e => { e.stopPropagation(); setMenu(m => !m); }} className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs font-bold shadow-md" style={{ background: t.accentBg, color: t.accent, border: `2px solid ${t.accent}40` }}>
                 {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : initials}
               </button>
               {showMenu && (
-                <div className="absolute right-0 top-14 w-60 rounded-2xl shadow-2xl overflow-hidden z-50 border glass-card" style={{ background: currentTheme === "dark" ? "rgba(10,10,10,0.85)" : "rgba(255,255,255,0.85)", borderColor: t.cardBorder }}>
-                  <div className="px-5 py-4 border-b" style={{ borderColor: t.cardBorder }}>
+                <div className="absolute right-0 top-12 w-56 md:w-60 rounded-2xl shadow-2xl overflow-hidden z-50 border glass-card" style={{ background: currentTheme === "dark" ? "rgba(10,10,10,0.95)" : "rgba(255,255,255,0.95)", borderColor: t.cardBorder }}>
+                  <div className="px-4 py-3 border-b" style={{ borderColor: t.cardBorder }}>
                     <p className="text-sm font-bold truncate" style={{ color: t.text }}>{user?.name}</p>
                     <p className="text-xs font-semibold truncate mt-1" style={{ color: t.textMuted }}>{user?.email}</p>
                   </div>
                   <div className="p-2">
-                    <button onClick={exportPDF} className="md:hidden w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }} onMouseEnter={e => e.currentTarget.style.background = t.card} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <button onClick={exportPDF} className="md:hidden w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }}>
                       <DownloadCloud size={16} style={{ color: t.textMuted }}/> Download PDF
                     </button>
-                    <button onClick={() => setShowPlan(true)} className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }} onMouseEnter={e => e.currentTarget.style.background = t.card} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <button onClick={() => setShowPlan(true)} className="md:hidden w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }}>
                       <Target size={16} style={{ color: t.textMuted }}/> Edit Budget Plan
                     </button>
-                    <button onClick={toggleTheme} className="sm:hidden w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }} onMouseEnter={e => e.currentTarget.style.background = t.card} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <button onClick={toggleTheme} className="sm:hidden w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors" style={{ color: t.text }}>
                       {currentTheme === "dark" ? <Sun size={16} style={{ color: t.textMuted }} /> : <Moon size={16} style={{ color: t.textMuted }} />} Switch Theme
                     </button>
-                    <button onClick={logout} className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors mt-1" style={{ color: t.red }} onMouseEnter={e => e.currentTarget.style.background = `${t.red}15`} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <button onClick={logout} className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors mt-1" style={{ color: t.red }}>
                       <LogOut size={16} /> Sign out
                     </button>
                   </div>
@@ -351,43 +355,43 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-8 md:space-y-10 relative z-10">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: t.text }}>
+            <h2 className="text-xl md:text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: t.text }}>
               {greeting(user?.name)}.
             </h2>
-            <p className="text-sm mt-2 font-bold uppercase tracking-wider" style={{ color: t.textMuted }}>
+            <p className="text-xs md:text-sm mt-1 font-bold uppercase tracking-wider" style={{ color: t.textMuted }}>
               Viewing {SHORT_MONTHS[month]} {year} overview
             </p>
           </div>
           
-          <div className="flex items-center gap-5 px-6 py-4 rounded-2xl shadow-sm border transition-colors glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${hColor}15`, color: hColor }}>
-              <Activity size={24} />
+          <div className="flex items-center gap-4 px-4 py-3 md:px-6 md:py-4 rounded-2xl shadow-sm border transition-colors glass-card w-full sm:w-auto" style={{ background: t.card, borderColor: t.cardBorder }}>
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${hColor}15`, color: hColor }}>
+              <Activity size={20} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: t.textMuted }}>Health Score</p>
+              <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest mb-0.5 md:mb-1" style={{ color: t.textMuted }}>Health Score</p>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold leading-none" style={{ color: hColor }}>{healthInfo.score}</span>
-                <span className="text-sm font-bold leading-none" style={{ color: hColor }}>({healthInfo.label})</span>
+                <span className="text-xl md:text-2xl font-bold leading-none" style={{ color: hColor }}>{healthInfo.score}</span>
+                <span className="text-xs md:text-sm font-bold leading-none" style={{ color: hColor }}>({healthInfo.label})</span>
               </div>
             </div>
           </div>
         </div>
 
         {isEmpty && (
-          <div className="rounded-[2rem] p-12 text-center border-2 border-dashed glass-card shadow-lg" style={{ background: t.accentBg, borderColor: `${t.accent}40` }}>
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" style={{ background: t.card, color: t.accent, border: `1px solid ${t.cardBorder}` }}>
-              <PieChart size={40} strokeWidth={1.5} />
+          <div className="rounded-[2rem] p-8 md:p-12 text-center border-2 border-dashed glass-card shadow-lg" style={{ background: t.accentBg, borderColor: `${t.accent}40` }}>
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" style={{ background: t.card, color: t.accent, border: `1px solid ${t.cardBorder}` }}>
+              <PieChart size={32} strokeWidth={1.5} />
             </div>
-            <h3 className="text-3xl font-bold mb-4" style={{ color: t.text }}>Begin your {SHORT_MONTHS[month]} budget</h3>
-            <p className="text-lg mb-8 max-w-lg mx-auto font-medium leading-relaxed" style={{ color: t.textMuted }}>
+            <h3 className="text-xl md:text-3xl font-bold mb-3 md:mb-4" style={{ color: t.text }}>Begin your {SHORT_MONTHS[month]} budget</h3>
+            <p className="text-sm md:text-lg mb-6 md:mb-8 max-w-lg mx-auto font-medium leading-relaxed" style={{ color: t.textMuted }}>
               Set your planned income and limits first. Your dashboard will dynamically build itself as you log transactions.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button onClick={() => setShowPlan(true)} className="w-full sm:w-auto px-10 py-4 rounded-full text-base font-bold shadow-xl transition-transform hover:scale-105" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
+              <button onClick={() => setShowPlan(true)} className="w-full sm:w-auto px-8 py-3.5 md:px-10 md:py-4 rounded-full text-sm md:text-base font-bold shadow-xl transition-transform hover:scale-105" style={{ background: t.accent, color: currentTheme === "dark" ? "#000" : "#fff" }}>
                 Set Budget Plan
               </button>
             </div>
@@ -395,34 +399,34 @@ export default function Dashboard() {
         )}
 
         {!isEmpty && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
             {[
-              { label: "Income", v: s.income?.actual, c: t.green, icon: <ArrowDownRight size={20} strokeWidth={3}/> },
-              { label: "Spent", v: s.spent?.actual, c: t.red, icon: <ArrowUpRight size={20} strokeWidth={3}/> },
-              { label: "Saved", v: s.savings?.actual, c: t.accent, icon: <Target size={20} strokeWidth={3}/> },
-              { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={20} strokeWidth={3}/> }
+              { label: "Income", v: s.income?.actual, c: t.green, icon: <ArrowDownRight size={18} strokeWidth={3}/> },
+              { label: "Spent", v: s.spent?.actual, c: t.red, icon: <ArrowUpRight size={18} strokeWidth={3}/> },
+              { label: "Saved", v: s.savings?.actual, c: t.accent, icon: <Target size={18} strokeWidth={3}/> },
+              { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={18} strokeWidth={3}/> }
             ].map((card, i) => (
-              <div key={i} className="rounded-3xl p-6 md:p-8 border shadow-lg transition-transform hover:-translate-y-2 relative overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-                <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none" style={{ background: card.c }} />
-                <div className="flex items-center justify-between mb-8">
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: t.textMuted }}>{card.label}</span>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
+              <div key={i} className="rounded-2xl md:rounded-3xl p-4 md:p-6 border shadow-sm md:shadow-lg transition-transform hover:-translate-y-1 md:hover:-translate-y-2 relative overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+                <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none" style={{ background: card.c }} />
+                <div className="flex flex-row md:flex-row items-center justify-between mb-4 md:mb-6">
+                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest" style={{ color: t.textMuted }}>{card.label}</span>
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shadow-inner" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
                 </div>
-                <p className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: t.text }}>{fmt(card.v)}</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate" style={{ color: t.text }}>{fmt(card.v)}</p>
               </div>
             ))}
           </div>
         )}
 
         {!isEmpty && (
-          <div className="flex gap-2 border-b" style={{ borderColor: t.cardBorder }}>
+          <div className="flex gap-1 md:gap-2 border-b" style={{ borderColor: t.cardBorder }}>
             {[
-              { id: "overview", label: "Dashboard", icon: <LayoutDashboard size={18}/> },
-              { id: "transactions", label: "Transactions", icon: <Receipt size={18}/> }
+              { id: "overview", label: "Overview", icon: <LayoutDashboard size={16}/> },
+              { id: "transactions", label: "Transactions", icon: <Receipt size={16}/> }
             ].map((tab) => (
               <button
                 key={tab.id} onClick={() => setTab(tab.id)}
-                className="px-6 py-4 text-sm font-bold flex items-center gap-3 transition-colors relative uppercase tracking-wider"
+                className="px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold flex items-center gap-2 md:gap-3 transition-colors relative uppercase tracking-wider"
                 style={{ color: activeTab === tab.id ? t.text : t.textMuted }}
               >
                 <span style={{ color: activeTab === tab.id ? t.accent : t.textMuted }}>{tab.icon}</span> {tab.label}
@@ -472,8 +476,8 @@ export default function Dashboard() {
 
             {/* Mobile List View - Perfect Stacked Layout */}
             <div className="lg:hidden col-span-1 rounded-[2rem] border shadow-lg overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-              <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: t.cardBorder, background: currentTheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)" }}>
-                <h3 className="font-bold text-base flex items-center gap-2" style={{ color: t.text }}><PieChart size={18} color={t.accent} /> Cash Flow Details</h3>
+              <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: t.cardBorder, background: currentTheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)" }}>
+                <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: t.text }}><PieChart size={16} color={t.accent} /> Cash Flow Details</h3>
               </div>
               <div className="divide-y" style={{ borderColor: t.cardBorder }}>
                 {cashFlowRows.map((row, i) => {
@@ -483,14 +487,14 @@ export default function Dashboard() {
                   const diffColor = diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green);
 
                   return (
-                    <div key={i} className="p-5" style={{ background: row.balance ? (currentTheme==="dark"?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)") : "transparent" }}>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold flex items-center gap-2" style={{ color: t.text, marginLeft: row.indent ? "1rem" : "0" }}>
-                          {row.indent && <div className="w-1.5 h-1.5 rounded-full" style={{ background: t.textMuted }}/>} {row.label}
+                    <div key={i} className="p-4" style={{ background: row.balance ? (currentTheme==="dark"?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)") : "transparent" }}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-sm flex items-center gap-2 truncate" style={{ color: t.text, marginLeft: row.indent ? "1rem" : "0" }}>
+                          {row.indent && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: t.textMuted }}/>} {row.label}
                         </span>
-                        <span className="font-bold text-base" style={{ color: actualColor }}>{fmt(row.actual)}</span>
+                        <span className="font-bold text-sm" style={{ color: actualColor }}>{fmt(row.actual)}</span>
                       </div>
-                      <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider mt-1">
                         <span style={{ color: t.textMuted }}>PLAN: {fmt(row.planned)}</span>
                         <span style={{ color: diffColor }}>DIFF: {diff > 0 ? "+" : ""}{fmt(diff)}</span>
                       </div>
@@ -501,14 +505,14 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[2rem] border p-6 md:p-8 shadow-lg glass-card h-80 flex flex-col" style={{ background: t.card, borderColor: t.cardBorder }}>
-                <h3 className="font-bold text-lg mb-4 flex-shrink-0" style={{ color: t.text }}>Spending Breakdown</h3>
+              <div className="rounded-[2rem] border p-5 md:p-8 shadow-lg glass-card h-72 md:h-80 flex flex-col" style={{ background: t.card, borderColor: t.cardBorder }}>
+                <h3 className="font-bold text-base md:text-lg mb-2 md:mb-4 flex-shrink-0" style={{ color: t.text }}>Spending Breakdown</h3>
                 <div className="flex-1 relative min-h-0">
                   <Doughnut data={doughnutData} options={doughnutOptions} />
                 </div>
               </div>
-              <div className="rounded-[2rem] border p-6 md:p-8 shadow-lg glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
-                <h3 className="font-bold text-lg mb-6" style={{ color: t.text }}>Plan vs Actual</h3>
+              <div className="rounded-[2rem] border p-5 md:p-8 shadow-lg glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+                <h3 className="font-bold text-base md:text-lg mb-4 md:mb-6" style={{ color: t.text }}>Plan vs Actual</h3>
                 <Bar data={barData} options={barOptions} />
               </div>
             </div>
