@@ -1,5 +1,5 @@
 // src/pages/AuthPages.jsx
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Wallet, Sun, Moon } from "lucide-react";
@@ -19,58 +19,44 @@ const THEMES = {
   }
 };
 
-function GoogleButton({ label = "Continue with Google", t, theme }) {
-  const [loading, setLoading] = useState(false);
+// 👇 Official Google renderButton implementation (No more dead clicks!)
+function GoogleButton({ label = "Continue with Google", theme }) {
   const { loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const btnContainerRef = useRef(null);
 
-  const handleClick = () => {
-    if (!window.google) return alert("Google Sign-In is not loaded.");
-    
-    setLoading(true);
-    
+  useEffect(() => {
+    if (!window.google) return;
+
     window.google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
       callback: async ({ credential }) => {
         try {
           await loginWithGoogle(credential);
           navigate("/app");
-        } catch (err) { 
-          alert(err.message); 
-        } finally { 
-          setLoading(false); 
+        } catch (err) {
+          alert(err.message);
         }
       },
     });
 
-    // FIX: Listen for prompt closures to stop the infinite spinner
-    window.google.accounts.id.prompt((notification) => {
-      if (
-        notification.isNotDisplayed() || 
-        notification.isSkippedMoment() || 
-        notification.isDismissedMoment()
-      ) {
-        setLoading(false);
+    // This renders the official, highly secure Google button
+    window.google.accounts.id.renderButton(
+      btnContainerRef.current,
+      { 
+        theme: theme === "dark" ? "filled_black" : "outline", 
+        size: "large", 
+        shape: "rectangular",
+        text: label.includes("up") ? "signup_with" : "continue_with",
+        logo_alignment: "left"
       }
-    });
-  };
+    );
+  }, [theme, loginWithGoogle, navigate, label]);
 
   return (
-    <button
-      type="button" onClick={handleClick} disabled={loading}
-      className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl text-sm font-semibold transition-all glass-card hover:scale-[1.02]"
-      style={{ background: theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.8)", border: `1px solid ${t.cardBorder}`, color: t.text }}
-    >
-      {loading ? <span className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" /> : (
-        <svg width="18" height="18" viewBox="0 0 48 48">
-          <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 6 1.1 8.1 3l5.7-5.7C34.1 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/>
-          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3.1 0 6 1.1 8.1 3l5.7-5.7C34.1 5.1 29.3 3 24 3c-7.7 0-14.4 4.4-17.7 11.7z"/>
-          <path fill="#4CAF50" d="M24 45c5.2 0 9.9-1.8 13.6-4.7l-6.3-5.2C29.5 36.8 26.9 38 24 38c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.4 41 16.2 45 24 45z"/>
-          <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.8l6.3 5.2C41.3 35.3 44 30 44 24c0-1.3-.1-2.7-.4-4z"/>
-        </svg>
-      )}
-      {!loading && label}
-    </button>
+    <div className="w-full flex justify-center">
+      <div ref={btnContainerRef} className="w-full flex justify-center overflow-hidden rounded-xl shadow-md transition-transform hover:scale-[1.02]"></div>
+    </div>
   );
 }
 
@@ -177,7 +163,10 @@ export function RegisterPage() {
         <span className="text-xs uppercase font-bold" style={{ color: t.textMuted }}>or</span>
         <div className="flex-1 h-px" style={{ background: t.cardBorder }} />
       </div>
-      <GoogleButton label="Sign up with Google" t={t} theme={theme} />
+      
+      {/* Offical Google Button inserted here */}
+      <GoogleButton label="Sign up with Google" theme={theme} />
+      
       <p className="text-center text-sm mt-8" style={{ color: t.textMuted }}>
         Already have an account? <Link to="/login" style={{ color: t.accent, fontWeight: 600 }}>Sign in</Link>
       </p>
@@ -222,7 +211,10 @@ export function LoginPage() {
         <span className="text-xs uppercase font-bold" style={{ color: t.textMuted }}>or</span>
         <div className="flex-1 h-px" style={{ background: t.cardBorder }} />
       </div>
-      <GoogleButton label="Continue with Google" t={t} theme={theme} />
+      
+      {/* Offical Google Button inserted here */}
+      <GoogleButton label="Continue with Google" theme={theme} />
+      
       <p className="text-center text-sm mt-8" style={{ color: t.textMuted }}>
         Don't have an account? <Link to="/register" style={{ color: t.accent, fontWeight: 600 }}>Sign up free</Link>
       </p>
