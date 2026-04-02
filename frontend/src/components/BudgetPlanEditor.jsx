@@ -1,275 +1,138 @@
-import { useEffect, useState } from "react";
+// src/components/BudgetPlanEditor.jsx
+import { useState, useEffect } from "react";
+import { X, Check } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
-const SHORT_MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const SECTIONS = {
+  "Income": ["Paycheck 1", "Paycheck 2", "Paycheck 3", "Paycheck 4", "Other Income"],
+  "Savings & Investments": ["Petra Savings Booster", "IC Liquidity Fund", "Trade Stocks"],
+  "Bills": ["Internet", "Wi-Fi", "Dues", "Airtime"],
+  "Variable Expenses": ["Dining Out/Take Out", "Groceries", "Uber", "Public transport", "Personal Care", "Tithe", "Utilities", "Home Supplies", "Health/Medical", "Travel", "Other"],
+  "Debts": ["Debt 1", "Debt 2", "Debt 3"]
+};
 
-const SECTIONS = [
-  {
-    key: "income", label: "Income", icon: "↑",
-    color: "text-green-400", border: "border-green-800",
-    category: "Income",
-    items: ["Paycheck 1", "Paycheck 2", "Paycheck 3", "Paycheck 4", "Other Income"],
-    hasDate: true,
-  },
-  {
-    key: "savings", label: "Savings & Investments", icon: "★",
-    color: "text-yellow-400", border: "border-yellow-800",
-    category: "Savings & Investments",
-    items: ["Petra Savings Booster", "IC Liquidity Fund", "Trade Stocks"],
-    hasDate: false,
-  },
-  {
-    key: "expense", label: "Variable Expenses", icon: "↓",
-    color: "text-red-400", border: "border-red-800",
-    category: "Expenses",
-    items: ["Dining Out/Take Out", "Groceries", "Uber", "Public transport", "Personal Care", "Tithe", "Utilities", "Home Supplies", "Health/Medical", "Travel", "Other"],
-    hasDate: true,
-  },
-  {
-    key: "expense", label: "Bills", icon: "📋",
-    color: "text-orange-400", border: "border-orange-800",
-    category: "Bills",
-    items: ["Internet", "Wi-Fi", "Dues", "Airtime"],
-    hasDate: true,
-  },
-  {
-    key: "expense", label: "Debts", icon: "💳",
-    color: "text-pink-400", border: "border-pink-800",
-    category: "Debts",
-    items: ["Debt 1"],
-    hasDate: true,
-  },
-];
+const THEMES = {
+  dark: { overlay: "rgba(0,0,0,0.7)", card: "#0a0a0a", border: "rgba(255,255,255,0.1)", text: "#fff", textMuted: "#9ca3af", accent: "#D4AF37", inputBg: "rgba(255,255,255,0.05)", green: "#4ade80" },
+  light: { overlay: "rgba(0,0,0,0.4)", card: "#ffffff", border: "rgba(0,0,0,0.1)", text: "#000", textMuted: "#64748b", accent: "#4f46e5", inputBg: "rgba(0,0,0,0.03)", green: "#16a34a" }
+};
 
 export default function BudgetPlanEditor({ month, year, onClose, authFetch }) {
-  const [plans,       setPlans]     = useState({});
-  const [dates,       setDates]     = useState({});
-  const [startBal,    setStartBal]  = useState("");
-  const [titheMode,   setTitheMode] = useState("pct");
-  const [tithePct,    setTithePct]  = useState(10);
-  const [saving,      setSaving]    = useState({});
-  const [saved,       setSaved]     = useState({});
-  const [savingBal,   setSavingBal] = useState(false);
-  const [savedBal,    setSavedBal]  = useState(false);
+  const { theme } = useAuth();
+  const t = THEMES[theme || "dark"];
+  
+  const [plans, setPlans] = useState({});
+  const [startBalance, setStartBalance] = useState("0");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      authFetch(`${API}/budget-plans?year=${year}&month=${month}`).then(r => r.json()),
-      authFetch(`${API}/summary?year=${year}&month=${month}`).then(r => r.json()),
-    ]).then(([rows, sum]) => {
-      const amtMap  = {};
-      const dateMap = {};
-      rows.forEach(r => {
-        amtMap[r.sub_category] = r.budget_amount;
-        if (r.expected_date) dateMap[r.sub_category] = r.expected_date.split("T")[0];
-      });
-      setPlans(amtMap);
-      setDates(dateMap);
-      if (sum.startBalance != null) setStartBal(sum.startBalance);
-
-      if (amtMap["Tithe"] != null && amtMap["Tithe"] > 0 && amtMap["Tithe"] <= 1) {
-        setTitheMode("pct");
-        setTithePct(Math.round(amtMap["Tithe"] * 100));
-      } else if (amtMap["Tithe"] > 1) {
-        setTitheMode("fixed");
-      }
-    });
+    async function load() {
+      try {
+        const [sumRes, planRes] = await Promise.all([
+          authFetch(`${API}/summary?year=${year}&month=${month}`),
+          authFetch(`${API}/budget-plans?year=${year}&month=${month}`)
+        ]);
+        const sumData = await sumRes.json();
+        setStartBalance(sumData.startBalance || "0");
+        
+        const data = await planRes.json();
+        const map = {};
+        if (Array.isArray(data)) {
+          data.forEach(p => { map[p.sub_category] = p; });
+        }
+        setPlans(map);
+      } catch (err) { console.error(err); }
+    }
+    load();
   }, [month, year, authFetch]);
 
-  const fmt = (n) =>
-    new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
+  const handleChange = (subCat, field, val) => {
+    setPlans(prev => ({
+      ...prev,
+      [subCat]: { ...prev[subCat], [field]: val }
+    }));
+  };
 
-  const sectionTotal = (sec) =>
-    sec.items.reduce((sum, item) => {
-      if (item === "Tithe" && titheMode === "pct") {
-        const incomePlanned = SECTIONS.find(s => s.key === "income")
-          ?.items.reduce((s, k) => s + parseFloat(plans[k] || 0), 0) || 0;
-        return sum + (incomePlanned * tithePct / 100);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await authFetch(`${API}/monthly-summary`, {
+        method: "PUT", body: JSON.stringify({ budget_year: year, budget_month: month, start_balance: parseFloat(startBalance) || 0 })
+      });
+      for (const [sec, subs] of Object.entries(SECTIONS)) {
+        for (const sub of subs) {
+          const p = plans[sub];
+          if (p && p.budget_amount) {
+            await authFetch(`${API}/budget-plans`, {
+              method: "PUT", body: JSON.stringify({ budget_year: year, budget_month: month, section: sec, category: sec, sub_category: sub, budget_amount: parseFloat(p.budget_amount) || 0, expected_date: p.expected_date })
+            });
+          }
+        }
       }
-      return sum + parseFloat(plans[item] || 0);
-    }, 0);
-
-  const saveLine = async (sectionKey, category, sub_category) => {
-    let amount = parseFloat(plans[sub_category] || 0);
-    if (sub_category === "Tithe" && titheMode === "pct") {
-      amount = tithePct / 100;
-    }
-    setSaving(s => ({ ...s, [sub_category]: true }));
-    await authFetch(`${API}/budget-plans`, {
-      method: "PUT",
-      body: JSON.stringify({
-        budget_year:   year,
-        budget_month:  month,
-        section:       sectionKey,
-        category,
-        sub_category,
-        budget_amount: amount,
-        expected_date: dates[sub_category] || null,
-      }),
-    });
-    setSaving(s => ({ ...s, [sub_category]: false }));
-    setSaved(s  => ({ ...s, [sub_category]: true }));
-    setTimeout(() => setSaved(s => ({ ...s, [sub_category]: false })), 1500);
+      onClose();
+    } catch (err) { console.error(err); }
+    setSaving(false);
   };
 
-  const saveStartBalance = async () => {
-    setSavingBal(true);
-    await authFetch(`${API}/monthly-summary`, {
-      method: "PUT",
-      body: JSON.stringify({
-        budget_year:   year,
-        budget_month:  month,
-        start_balance: parseFloat(startBal || 0),
-      }),
-    });
-    setSavingBal(false);
-    setSavedBal(true);
-    setTimeout(() => setSavedBal(false), 1500);
-  };
-
-  const liveIncomePlanned = SECTIONS.find(s => s.key === "income")
-    ?.items.reduce((s, k) => s + parseFloat(plans[k] || 0), 0) || 0;
-  const liveTitheValue = titheMode === "pct"
-    ? liveIncomePlanned * tithePct / 100
-    : parseFloat(plans["Tithe"] || 0);
+  const sectionTotal = (subs) => subs.reduce((sum, sub) => sum + (parseFloat(plans[sub]?.budget_amount) || 0), 0);
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl my-8"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-colors" style={{ background: t.overlay }}>
+      <div className="w-full max-w-lg h-[90vh] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden" style={{ background: t.card, border: `1px solid ${t.border}`, color: t.text }}>
+        
+        {/* Header */}
+        <div className="px-6 py-5 border-b flex-shrink-0 flex items-center justify-between" style={{ borderColor: t.border }}>
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">📋 Budget Plan</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{SHORT_MONTHS[month]} {year} · Set planned amounts & dates</p>
+            <h3 className="text-xl font-bold flex items-center gap-2"><Target size={20} color={t.accent} /> Budget Plan</h3>
+            <p className="text-xs font-semibold mt-1" style={{ color: t.textMuted }}>Set planned amounts & dates</p>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">×</button>
+          <button onClick={onClose} className="p-2 rounded-full transition-colors hover:bg-white/10" style={{ color: t.textMuted }}><X size={20} /></button>
         </div>
 
-        <div className="px-6 py-5 space-y-6 max-h-[75vh] overflow-y-auto">
-          <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-gray-200">🏦 Start Balance</label>
-              <span className="text-xs text-gray-500">Opening balance for {SHORT_MONTHS[month]}</span>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <div className="p-5 rounded-2xl border" style={{ background: t.inputBg, borderColor: t.border }}>
+            <div className="flex justify-between items-center mb-3">
+              <label className="text-sm font-bold flex items-center gap-2"><Wallet size={16} color={t.accent} /> Start Balance</label>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">₵</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={startBal}
-                  onChange={e => setStartBal(e.target.value)}
-                  onBlur={saveStartBalance}
-                  placeholder="0.00"
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg pl-7 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <span className="w-6 text-center text-xs">
-                {savingBal && <span className="text-gray-500">...</span>}
-                {savedBal  && <span className="text-green-400">✓</span>}
-              </span>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold" style={{ color: t.textMuted }}>₵</span>
+              <input type="number" value={startBalance} onChange={e => setStartBalance(e.target.value)} className="w-full pl-8 pr-4 py-3 rounded-xl outline-none font-bold bg-transparent border transition-colors focus:border-[color:var(--accent)]" style={{ borderColor: t.border }} />
             </div>
           </div>
 
-          {SECTIONS.map(sec => (
-            <div key={sec.label}>
-              <div className={`flex items-center justify-between mb-3 border-b pb-2 ${sec.border}`}>
-                <h3 className={`text-sm font-semibold ${sec.color}`}>{sec.icon} {sec.label}</h3>
-                <span className="text-xs text-gray-500">Total: {fmt(sectionTotal(sec))}</span>
-              </div>
-
-              <div className="space-y-3">
-                {sec.items.map(item => {
-                  const isTithe = item === "Tithe";
-                  return (
-                    <div key={item}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <label className="flex-1 text-sm text-gray-300 truncate">{item}</label>
-
-                        {isTithe && (
-                          <button
-                            type="button"
-                            onClick={() => setTitheMode(m => m === "pct" ? "fixed" : "pct")}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-600 text-gray-400 hover:text-gray-200 transition flex-shrink-0"
-                          >
-                            {titheMode === "pct" ? "% mode" : "₵ mode"}
-                          </button>
-                        )}
-
-                        {isTithe && titheMode === "pct" ? (
-                          <div className="relative w-28 flex-shrink-0">
-                            <input
-                              type="number"
-                              min="0" max="100" step="1"
-                              value={tithePct}
-                              onChange={e => setTithePct(Number(e.target.value))}
-                              onBlur={() => saveLine(sec.key, sec.category, item)}
-                              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-3 pr-7 py-1.5 text-sm text-gray-200 text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">%</span>
-                          </div>
-                        ) : (
-                          <div className="relative w-28 flex-shrink-0">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">₵</span>
-                            <input
-                              type="number"
-                              min="0" step="0.01"
-                              value={plans[item] ?? ""}
-                              placeholder="0"
-                              onChange={e => setPlans(p => ({ ...p, [item]: e.target.value }))}
-                              onBlur={() => saveLine(sec.key, sec.category, item)}
-                              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-2 py-1.5 text-sm text-gray-200 text-right placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                          </div>
-                        )}
-
-                        <span className="w-5 text-center flex-shrink-0 text-xs">
-                          {saving[item] && <span className="text-gray-500">...</span>}
-                          {saved[item]  && <span className="text-green-400">✓</span>}
-                        </span>
+          {Object.entries(SECTIONS).map(([sec, subs]) => {
+            const isIncome = sec === "Income";
+            return (
+              <div key={sec}>
+                <div className="flex justify-between items-end mb-4 border-b pb-2" style={{ borderColor: isIncome ? t.green : t.border }}>
+                  <h4 className="font-bold text-sm" style={{ color: isIncome ? t.green : t.accent }}>{isIncome ? "↑" : "↓"} {sec}</h4>
+                  <span className="text-xs font-bold" style={{ color: t.textMuted }}>Total: ₵{sectionTotal(subs).toFixed(2)}</span>
+                </div>
+                <div className="space-y-4">
+                  {subs.map(sub => (
+                    <div key={sub} className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label className="text-xs font-bold block mb-1" style={{ color: t.text }}>{sub}</label>
+                        <input type="number" placeholder="0.00" value={plans[sub]?.budget_amount || ""} onChange={e => handleChange(sub, "budget_amount", e.target.value)} className="w-full px-3 py-2 rounded-lg outline-none text-sm font-semibold transition-colors" style={{ background: t.inputBg, border: `1px solid ${t.border}` }} />
                       </div>
-
-                      {isTithe && titheMode === "pct" && (
-                        <p className="text-xs text-gray-600 text-right pr-8 -mt-0.5">
-                          = {fmt(liveTitheValue)} on {fmt(liveIncomePlanned)} income
-                        </p>
-                      )}
-
-                      {sec.hasDate && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-600 w-24 flex-shrink-0">
-                            {sec.key === "income" ? "Expected date" : "Due date"}
-                          </span>
-                          <input
-                            type="date"
-                            value={dates[item] || ""}
-                            onChange={e => setDates(d => ({ ...d, [item]: e.target.value }))}
-                            onBlur={() => saveLine(sec.key, sec.category, item)}
-                            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
-                        </div>
-                      )}
+                      <div className="w-1/3">
+                        <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: t.textMuted }}>Date</label>
+                        <input type="date" value={plans[sub]?.expected_date || ""} onChange={e => handleChange(sub, "expected_date", e.target.value)} className="w-full px-2 py-2 rounded-lg outline-none text-xs font-medium transition-colors" style={{ background: t.inputBg, border: `1px solid ${t.border}`, color: t.textMuted }} />
+                      </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="px-6 pb-5 pt-3 border-t border-gray-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition"
-          >
-            Done
+        {/* Footer */}
+        <div className="p-4 border-t flex-shrink-0" style={{ borderColor: t.border, background: t.card }}>
+          <button onClick={handleSave} disabled={saving} className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-transform hover:scale-[1.02]" style={{ background: t.accent, color: theme === "dark" ? "#000" : "#fff" }}>
+            {saving ? "Saving..." : <><Check size={18} /> Done</>}
           </button>
         </div>
       </div>
