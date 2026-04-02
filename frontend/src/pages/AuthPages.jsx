@@ -2,15 +2,30 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Wallet, Sun, Moon } from "lucide-react";
 
-// ── Google Sign-In button ─────────────────────────────────────────────────────
-function GoogleButton({ label = "Continue with Google" }) {
+const THEMES = {
+  dark: {
+    bgClass: "bg-[#050505]",
+    meshClass: "mesh-bg-dark",
+    card: "rgba(20,20,20,0.6)", cardBorder: "rgba(255,255,255,0.08)",
+    text: "#f8fafc", textMuted: "#9ca3af", accent: "#D4AF37"
+  },
+  light: {
+    bgClass: "bg-[#f4f4f5]",
+    meshClass: "mesh-bg-light",
+    card: "rgba(255,255,255,0.7)", cardBorder: "rgba(255,255,255,0.4)",
+    text: "#18181b", textMuted: "#71717a", accent: "#4f46e5"
+  }
+};
+
+function GoogleButton({ label = "Continue with Google", t, theme }) {
   const [loading, setLoading] = useState(false);
-  const { loginWithGoogle }   = useAuth();
-  const navigate              = useNavigate();
+  const { loginWithGoogle } = useAuth();
+  const navigate = useNavigate();
 
   const handleClick = () => {
-    if (!window.google) return alert("Google Sign-In is not loaded. Check your GOOGLE_CLIENT_ID setup.");
+    if (!window.google) return alert("Google Sign-In is not loaded.");
     setLoading(true);
     window.google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -18,11 +33,8 @@ function GoogleButton({ label = "Continue with Google" }) {
         try {
           await loginWithGoogle(credential);
           navigate("/app");
-        } catch (err) {
-          alert(err.message);
-        } finally {
-          setLoading(false);
-        }
+        } catch (err) { alert(err.message); } 
+        finally { setLoading(false); }
       },
     });
     window.google.accounts.id.prompt();
@@ -30,17 +42,11 @@ function GoogleButton({ label = "Continue with Google" }) {
 
   return (
     <button
-      type="button"
-      onClick={handleClick}
-      disabled={loading}
-      className="w-full flex items-center justify-center gap-3 py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
-      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e5e5e5" }}
-      onMouseEnter={e => !loading && (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+      type="button" onClick={handleClick} disabled={loading}
+      className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl text-sm font-semibold transition-all glass-card hover:scale-[1.02]"
+      style={{ background: theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.8)", border: `1px solid ${t.cardBorder}`, color: t.text }}
     >
-      {loading ? (
-        <span className="w-4 h-4 border-2 border-gray-500 border-t-white rounded-full animate-spin" />
-      ) : (
+      {loading ? <span className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" /> : (
         <svg width="18" height="18" viewBox="0 0 48 48">
           <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.7 29.3 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 6 1.1 8.1 3l5.7-5.7C34.1 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.7-.4-4z"/>
           <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3.1 0 6 1.1 8.1 3l5.7-5.7C34.1 5.1 29.3 3 24 3c-7.7 0-14.4 4.4-17.7 11.7z"/>
@@ -53,30 +59,60 @@ function GoogleButton({ label = "Continue with Google" }) {
   );
 }
 
-// ── Shared layout wrapper ─────────────────────────────────────────────────────
+function Field({ label, type = "text", value, onChange, placeholder, t }) {
+  const [show, setShow] = useState(false);
+  const isPass = type === "password";
+  return (
+    <div>
+      <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: t.textMuted }}>{label}</label>
+      <div className="relative">
+        <input
+          type={isPass && !show ? "password" : "text"} value={value} onChange={onChange} placeholder={placeholder}
+          className="w-full rounded-xl px-4 py-3.5 text-sm outline-none transition-all glass-card"
+          style={{ background: t.card, border: `1px solid ${t.cardBorder}`, color: t.text }}
+          onFocus={e => e.target.style.borderColor = t.accent}
+          onBlur={e  => e.target.style.borderColor = t.cardBorder}
+        />
+        {isPass && (
+          <button type="button" onClick={() => setShow(s => !s)} className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase" style={{ color: t.accent }}>
+            {show ? "hide" : "show"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AuthLayout({ children, title, subtitle }) {
   const navigate = useNavigate();
-  return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#080808", fontFamily: "'DM Sans', sans-serif" }}>
-      <link href="[https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap)" rel="stylesheet" />
+  const { theme, toggleTheme } = useAuth();
+  const t = THEMES[theme];
 
-      <nav className="flex items-center justify-between px-6 py-5">
-        <button onClick={() => navigate("/")} className="flex items-center gap-2">
-          <span>💰</span>
-          <span style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.1rem", fontWeight: 700 }}>
-            BudgetTracker
-          </span>
+  return (
+    <div className={`min-h-screen flex flex-col ${t.bgClass} ${t.meshClass} transition-colors duration-700`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        .glass-card { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+        .mesh-bg-light { background-image: radial-gradient(at 0% 0%, hsla(199,89%,48%,0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, hsla(253,91%,64%,0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(340,82%,52%,0.15) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(43,100%,50%,0.15) 0px, transparent 50%); }
+        .mesh-bg-dark { background-image: radial-gradient(at 0% 0%, hsla(46,65%,52%,0.1) 0px, transparent 50%), radial-gradient(at 100% 0%, hsla(253,91%,64%,0.05) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(340,82%,52%,0.05) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(43,100%,50%,0.05) 0px, transparent 50%); }
+      `}</style>
+      <nav className="flex items-center justify-between px-6 py-6">
+        <button onClick={() => navigate("/")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 rounded flex items-center justify-center text-white shadow-lg" style={{ background: t.accent }}>
+            <Wallet size={16} strokeWidth={2.5} />
+          </div>
+          <span style={{ fontFamily: "'Playfair Display', serif", color: t.text, fontSize: "1.25rem", fontWeight: 700 }}>BudgetTracker</span>
+        </button>
+        <button onClick={toggleTheme} className="p-2.5 rounded-full transition-transform hover:scale-110 glass-card shadow-sm" style={{ background: t.card, color: t.text, border: `1px solid ${t.cardBorder}` }}>
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </nav>
 
       <div className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
-          <div className="relative rounded-2xl p-8 md:p-10" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)" }}>
+        <div className="w-full max-w-md relative">
+          <div className="glass-card rounded-[2rem] p-8 md:p-10 shadow-2xl" style={{ background: t.card, border: `1px solid ${t.cardBorder}` }}>
             <div className="text-center mb-8">
-              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.9rem", fontWeight: 700, color: "#fff" }}>
-                {title}
-              </h1>
-              <p className="text-gray-500 text-sm mt-2" style={{ fontWeight: 300 }}>{subtitle}</p>
+              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "2.2rem", fontWeight: 700, color: t.text }}>{title}</h1>
+              <p className="text-sm mt-3 leading-relaxed" style={{ color: t.textMuted }}>{subtitle}</p>
             </div>
             {children}
           </div>
@@ -86,180 +122,95 @@ function AuthLayout({ children, title, subtitle }) {
   );
 }
 
-// ── Input field component ─────────────────────────────────────────────────────
-// NOTE: type="text" for all fields to avoid browser native validation
-// We validate manually in handleSubmit instead
-function Field({ label, type = "text", value, onChange, placeholder, autoComplete }) {
-  const [show, setShow] = useState(false);
-  const isPass = type === "password";
-  return (
-    <div>
-      <label className="block text-xs font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.5)" }}>
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          type={isPass && !show ? "password" : "text"}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "#e5e5e5",
-          }}
-          onFocus={e => (e.target.style.borderColor = "rgba(212,175,55,0.6)")}
-          onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
-        />
-        {isPass && (
-          <button
-            type="button"
-            onClick={() => setShow(s => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-600 hover:text-gray-400"
-          >
-            {show ? "hide" : "show"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── REGISTER PAGE ─────────────────────────────────────────────────────────────
 export function RegisterPage() {
-  const navigate       = useNavigate();
-  const { register }   = useAuth();
+  const navigate = useNavigate();
+  const { register, theme } = useAuth();
+  const t = THEMES[theme];
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setErr] = useState("");
   const [loading, setL] = useState(false);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  // Manual validation — no browser native form validation involved
   const handleSubmit = async () => {
     setErr("");
-    if (!form.name.trim())     return setErr("Full name is required.");
-    if (!form.email.trim())    return setErr("Email address is required.");
-    if (!form.email.includes("@")) return setErr("Please enter a valid email address.");
-    if (!form.password)        return setErr("Password is required.");
+    if (!form.name.trim()) return setErr("Full name is required.");
+    if (!form.email.trim() || !form.email.includes("@")) return setErr("Please enter a valid email.");
     if (form.password.length < 8) return setErr("Password must be at least 8 characters.");
 
     setL(true);
-    try {
-      await register(form.name.trim(), form.email.trim(), form.password);
-      navigate("/app");
-    } catch (err) {
-      setErr(err.message);
-    } finally {
-      setL(false);
-    }
+    try { await register(form.name.trim(), form.email.trim(), form.password); navigate("/app"); } 
+    catch (err) { setErr(err.message); } 
+    finally { setL(false); }
   };
 
   return (
-    <AuthLayout title="Create your account" subtitle="Start managing your money in minutes — free forever.">
-      <div className="space-y-4">
-        <Field label="Full name"      value={form.name}     onChange={set("name")}     placeholder="Kwame Asante"        autoComplete="name" />
-        <Field label="Email address"  value={form.email}    onChange={set("email")}    placeholder="you@example.com"     autoComplete="email" />
-        <Field label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" autoComplete="new-password" />
+    <AuthLayout title="Create Account" subtitle="Join thousands of Ghanaians tracking smarter.">
+      <div className="space-y-5">
+        <Field label="Full name" value={form.name} onChange={set("name")} placeholder="Kwame Asante" t={t} />
+        <Field label="Email address" value={form.email} onChange={set("email")} placeholder="you@example.com" t={t} />
+        <Field label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" t={t} />
 
-        {error && (
-          <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#fca5a5" }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="rounded-xl px-4 py-3 text-sm font-medium bg-red-500/10 border border-red-500/30 text-red-500">{error}</div>}
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 mt-2"
-          style={{ background: "#D4AF37", color: "#080808" }}
-        >
+        <button onClick={handleSubmit} disabled={loading} className="w-full py-4 rounded-xl text-sm font-bold transition-all shadow-lg hover:scale-[1.02]" style={{ background: t.accent, color: theme === "dark" ? "#000" : "#fff" }}>
           {loading ? "Creating account..." : "Create free account"}
         </button>
       </div>
-
-      <div className="flex items-center gap-3 my-5">
-        <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-        <span className="text-xs text-gray-600">or</span>
-        <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+      <div className="flex items-center gap-4 my-6">
+        <div className="flex-1 h-px" style={{ background: t.cardBorder }} />
+        <span className="text-xs uppercase font-bold" style={{ color: t.textMuted }}>or</span>
+        <div className="flex-1 h-px" style={{ background: t.cardBorder }} />
       </div>
-
-      <GoogleButton label="Sign up with Google" />
-
-      <p className="text-center text-sm text-gray-600 mt-6">
-        Already have an account?{" "}
-        <Link to="/login" style={{ color: "#D4AF37" }} className="hover:underline">Sign in</Link>
+      <GoogleButton label="Sign up with Google" t={t} theme={theme} />
+      <p className="text-center text-sm mt-8" style={{ color: t.textMuted }}>
+        Already have an account? <Link to="/login" style={{ color: t.accent, fontWeight: 600 }}>Sign in</Link>
       </p>
     </AuthLayout>
   );
 }
 
-// ── LOGIN PAGE ────────────────────────────────────────────────────────────────
 export function LoginPage() {
-  const navigate        = useNavigate();
-  const { login }       = useAuth();
-  const [form, setForm]  = useState({ email: "", password: "" });
-  const [error, setErr]  = useState("");
-  const [loading, setL]  = useState(false);
+  const navigate = useNavigate();
+  const { login, theme } = useAuth();
+  const t = THEMES[theme];
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setErr] = useState("");
+  const [loading, setL] = useState(false);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = async () => {
     setErr("");
-    if (!form.email.trim())    return setErr("Email address is required.");
-    if (!form.email.includes("@")) return setErr("Please enter a valid email address.");
-    if (!form.password)        return setErr("Password is required.");
+    if (!form.email.trim() || !form.password) return setErr("Email and password required.");
 
     setL(true);
-    try {
-      await login(form.email.trim(), form.password);
-      navigate("/app");
-    } catch (err) {
-      setErr(err.message);
-    } finally {
-      setL(false);
-    }
+    try { await login(form.email.trim(), form.password); navigate("/app"); } 
+    catch (err) { setErr(err.message); } 
+    finally { setL(false); }
   };
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to your BudgetTracker account.">
-      <div className="space-y-4">
-        <Field label="Email address" value={form.email}    onChange={set("email")}    placeholder="you@example.com" autoComplete="email" />
-        <Field label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Your password" autoComplete="current-password" />
+    <AuthLayout title="Welcome Back" subtitle="Sign in to access your financial dashboard.">
+      <div className="space-y-5">
+        <Field label="Email address" value={form.email} onChange={set("email")} placeholder="you@example.com" t={t} />
+        <Field label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Your password" t={t} />
 
-        {error && (
-          <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#fca5a5" }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="rounded-xl px-4 py-3 text-sm font-medium bg-red-500/10 border border-red-500/30 text-red-500">{error}</div>}
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 mt-2"
-          style={{ background: "#D4AF37", color: "#080808" }}
-        >
+        <button onClick={handleSubmit} disabled={loading} className="w-full py-4 rounded-xl text-sm font-bold transition-all shadow-lg hover:scale-[1.02]" style={{ background: t.accent, color: theme === "dark" ? "#000" : "#fff" }}>
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </div>
-
-      <div className="flex items-center gap-3 my-5">
-        <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-        <span className="text-xs text-gray-600">or</span>
-        <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+      <div className="flex items-center gap-4 my-6">
+        <div className="flex-1 h-px" style={{ background: t.cardBorder }} />
+        <span className="text-xs uppercase font-bold" style={{ color: t.textMuted }}>or</span>
+        <div className="flex-1 h-px" style={{ background: t.cardBorder }} />
       </div>
-
-      <GoogleButton label="Continue with Google" />
-
-      <p className="text-center text-sm text-gray-600 mt-6">
-        Don't have an account?{" "}
-        <Link to="/register" style={{ color: "#D4AF37" }} className="hover:underline">Sign up free</Link>
+      <GoogleButton label="Continue with Google" t={t} theme={theme} />
+      <p className="text-center text-sm mt-8" style={{ color: t.textMuted }}>
+        Don't have an account? <Link to="/register" style={{ color: t.accent, fontWeight: 600 }}>Sign up free</Link>
       </p>
     </AuthLayout>
   );
 }
-
