@@ -29,14 +29,14 @@ const THEMES = {
     navBg: "rgba(5,5,5,0.7)", text: "#f8fafc", textMuted: "#9ca3af",
     card: "rgba(20,20,20,0.6)", cardBorder: "rgba(255,255,255,0.08)",
     accent: "#D4AF37", accentBg: "rgba(212,175,55,0.1)",
-    green: "#34d399", red: "#f87171", warning: "#fbbf24", blue: "#3b82f6", chartGrid: "rgba(255,255,255,0.05)"
+    green: "#34d399", red: "#f87171", warning: "#fbbf24", blue: "#3b82f6", yellow: "#eab308", chartGrid: "rgba(255,255,255,0.05)"
   },
   light: {
     bgClass: "bg-[#f4f4f5]", meshClass: "mesh-bg-light",
     navBg: "rgba(244,244,245,0.7)", text: "#18181b", textMuted: "#71717a",
     card: "rgba(255,255,255,0.7)", cardBorder: "rgba(255,255,255,0.4)",
     accent: "#4f46e5", accentBg: "rgba(79,70,229,0.1)",
-    green: "#10b981", red: "#ef4444", warning: "#f59e0b", blue: "#2563eb", chartGrid: "rgba(0,0,0,0.05)"
+    green: "#10b981", red: "#ef4444", warning: "#f59e0b", blue: "#3b82f6", yellow: "#eab308", chartGrid: "rgba(0,0,0,0.05)"
   }
 };
 
@@ -111,7 +111,7 @@ export default function Dashboard() {
   // Standard formatter for the UI (uses Cedi symbol)
   const fmt = (n) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
   
-  // Safe formatter for the PDF (uses GHS text to prevent font encoding errors)
+  // Safe formatter for the PDF (uses text "GHS" to prevent the weird µ font bug)
   const pdfFmt = (n) => {
     const val = Number(n) || 0;
     return "GHS " + val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -143,7 +143,8 @@ export default function Dashboard() {
     labels: ["Bills", "Variable", "Savings", "Balance"],
     datasets: [{
       data: [ s.bills?.actual || 0, s.variableExpenses?.actual || 0, s.savings?.actual || 0, Math.max(0, (s.balance?.actual || 0)) ],
-      backgroundColor: [t.red, t.blue, t.accent, t.green], 
+      // Explicitly unique colors so they never match or blend
+      backgroundColor: [t.red, t.blue, t.yellow, t.green], 
       borderWidth: 0, hoverOffset: 4,
     }],
   };
@@ -166,20 +167,15 @@ export default function Dashboard() {
     { label: "Balance", planned: s.balance?.planned, actual: s.balance?.actual, balance: true },
   ];
 
-  // ── FIX: PDF GENERATION WITH "GHS" TEXT INSTEAD OF SYMBOL ──
   const exportPDF = () => {
     const doc = new jsPDF();
-    
-    // Header
     doc.setFontSize(22);
     doc.setTextColor(40, 40, 40);
     doc.text("Monthly Financial Report", 14, 22);
-    
     doc.setFontSize(11);
     doc.setTextColor(100, 100, 100);
     doc.text(`BudgetTracker • ${SHORT_MONTHS[month]} ${year} • ${user?.name || "Account Statement"}`, 14, 30);
 
-    // KPI Summary Section
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
     doc.text("Account Summary", 14, 45);
@@ -187,19 +183,10 @@ export default function Dashboard() {
     doc.autoTable({
       startY: 50,
       head: [["Start Balance", "Total Income", "Total Spent", "Total Saved", "End Balance"]],
-      body: [[
-        pdfFmt(s.startBalance),
-        pdfFmt(s.income?.actual),
-        pdfFmt(s.spent?.actual),
-        pdfFmt(s.savings?.actual),
-        pdfFmt(s.balance?.actual)
-      ]],
-      theme: "grid",
-      headStyles: { fillColor: [40, 40, 40], halign: 'center' },
-      bodyStyles: { halign: 'center', fontStyle: 'bold' }
+      body: [[ pdfFmt(s.startBalance), pdfFmt(s.income?.actual), pdfFmt(s.spent?.actual), pdfFmt(s.savings?.actual), pdfFmt(s.balance?.actual) ]],
+      theme: "grid", headStyles: { fillColor: [40, 40, 40], halign: 'center' }, bodyStyles: { halign: 'center', fontStyle: 'bold' }
     });
 
-    // Cash Flow Table Section
     let finalY = doc.lastAutoTable.finalY;
     doc.setFontSize(14);
     doc.text("Cash Flow Details", 14, finalY + 15);
@@ -207,30 +194,16 @@ export default function Dashboard() {
     const cfBody = cashFlowRows.map(row => {
       const diff = (row.actual ?? 0) - (row.planned ?? 0);
       const sign = diff > 0 ? "+" : "";
-      return [
-        row.label.replace("↳ ", "  - "),
-        pdfFmt(row.planned),
-        pdfFmt(row.actual),
-        `${sign}${pdfFmt(diff)}`
-      ];
+      return [ row.label.replace("↳ ", "  - "), pdfFmt(row.planned), pdfFmt(row.actual), `${sign}${pdfFmt(diff)}` ];
     });
 
     doc.autoTable({
-      startY: finalY + 20,
-      head: [["Category", "Planned", "Actual", "Variance"]],
-      body: cfBody,
-      theme: "striped",
+      startY: finalY + 20, head: [["Category", "Planned", "Actual", "Variance"]], body: cfBody, theme: "striped",
       headStyles: { fillColor: currentTheme === "dark" ? [212, 175, 55] : [79, 70, 229] }
     });
 
-    // Transactions Table Section
     finalY = doc.lastAutoTable.finalY;
-    if (finalY > 230) {
-      doc.addPage();
-      finalY = 20;
-    } else {
-      finalY += 15;
-    }
+    if (finalY > 230) { doc.addPage(); finalY = 20; } else { finalY += 15; }
 
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
@@ -241,27 +214,13 @@ export default function Dashboard() {
         const isInc = (tx.section || "").toLowerCase().includes("income");
         const sign = isInc ? "+" : "-";
         const date = new Date(tx.transaction_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-        return [
-          date,
-          tx.description || "—",
-          tx.sub_category || tx.category || "—",
-          `${sign}${pdfFmt(tx.amount)}`
-        ];
+        return [ date, tx.description || "—", tx.sub_category || tx.category || "—", `${sign}${pdfFmt(tx.amount)}` ];
       });
 
-      doc.autoTable({
-        startY: finalY + 5,
-        head: [["Date", "Description", "Category", "Amount"]],
-        body: txBody,
-        theme: "grid",
-        headStyles: { fillColor: [100, 100, 100] }
-      });
+      doc.autoTable({ startY: finalY + 5, head: [["Date", "Description", "Category", "Amount"]], body: txBody, theme: "grid", headStyles: { fillColor: [100, 100, 100] } });
     } else {
-      doc.setFontSize(10);
-      doc.setTextColor(150, 150, 150);
-      doc.text("No transactions logged for this month.", 14, finalY + 10);
+      doc.setFontSize(10); doc.setTextColor(150, 150, 150); doc.text("No transactions logged for this month.", 14, finalY + 10);
     }
-
     doc.save(`BudgetTracker_Report_${SHORT_MONTHS[month]}_${year}.pdf`);
   };
 
@@ -401,18 +360,18 @@ export default function Dashboard() {
         {!isEmpty && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
             {[
-              { label: "Income", v: s.income?.actual, c: t.green, icon: <ArrowDownRight size={18} strokeWidth={3}/> },
-              { label: "Spent", v: s.spent?.actual, c: t.red, icon: <ArrowUpRight size={18} strokeWidth={3}/> },
-              { label: "Saved", v: s.savings?.actual, c: t.accent, icon: <Target size={18} strokeWidth={3}/> },
-              { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={18} strokeWidth={3}/> }
+              { label: "Income", v: s.income?.actual, c: t.green, icon: <ArrowDownRight size={18} strokeWidth={3}/>, valColor: t.green },
+              { label: "Spent", v: s.spent?.actual, c: t.red, icon: <ArrowUpRight size={18} strokeWidth={3}/>, valColor: t.red },
+              { label: "Saved", v: s.savings?.actual, c: t.yellow, icon: <Target size={18} strokeWidth={3}/>, valColor: t.yellow },
+              { label: "Balance", v: s.balance?.actual, c: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red, icon: <Wallet size={18} strokeWidth={3}/>, valColor: (s.balance?.actual ?? 0) >= 0 ? t.green : t.red }
             ].map((card, i) => (
-              <div key={i} className="rounded-2xl md:rounded-3xl p-4 md:p-6 border shadow-sm md:shadow-lg transition-transform hover:-translate-y-1 md:hover:-translate-y-2 relative overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
+              <div key={i} className="rounded-2xl md:rounded-3xl p-3 md:p-6 border shadow-sm md:shadow-lg transition-transform hover:-translate-y-1 md:hover:-translate-y-2 relative overflow-hidden glass-card flex flex-col justify-between" style={{ background: t.card, borderColor: t.cardBorder }}>
                 <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-20 pointer-events-none" style={{ background: card.c }} />
-                <div className="flex flex-row md:flex-row items-center justify-between mb-4 md:mb-6">
+                <div className="flex flex-row items-center justify-between mb-3 md:mb-6">
                   <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest" style={{ color: t.textMuted }}>{card.label}</span>
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shadow-inner" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shadow-inner flex-shrink-0" style={{ background: `${card.c}20`, color: card.c }}>{card.icon}</div>
                 </div>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate" style={{ color: t.text }}>{fmt(card.v)}</p>
+                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight" style={{ color: card.valColor }}>{fmt(card.v)}</p>
               </div>
             ))}
           </div>
@@ -463,7 +422,7 @@ export default function Dashboard() {
                           {row.indent && <div className="w-1.5 h-1.5 rounded-full" style={{ background: t.textMuted }}/>} {row.label}
                         </td>
                         <td className="text-right px-8 py-5 font-medium" style={{ color: t.textMuted }}>{fmt(row.planned)}</td>
-                        <td className="text-right px-8 py-5 font-bold text-base" style={{ color: row.positive ? t.green : row.negative ? t.red : row.savings ? t.accent : t.text }}>{fmt(row.actual)}</td>
+                        <td className="text-right px-8 py-5 font-bold text-base" style={{ color: row.positive ? t.green : row.negative ? t.red : row.savings ? t.yellow : t.text }}>{fmt(row.actual)}</td>
                         <td className="text-right px-8 py-5 font-bold" style={{ color: diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green) }}>
                           {diff > 0 ? "+" : ""}{fmt(diff)}
                         </td>
@@ -474,7 +433,7 @@ export default function Dashboard() {
               </table>
             </div>
 
-            {/* Mobile List View - Perfect Stacked Layout */}
+            {/* Mobile List View */}
             <div className="lg:hidden col-span-1 rounded-[2rem] border shadow-lg overflow-hidden glass-card" style={{ background: t.card, borderColor: t.cardBorder }}>
               <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: t.cardBorder, background: currentTheme === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)" }}>
                 <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: t.text }}><PieChart size={16} color={t.accent} /> Cash Flow Details</h3>
@@ -483,7 +442,7 @@ export default function Dashboard() {
                 {cashFlowRows.map((row, i) => {
                   const diff = (row.actual ?? 0) - (row.planned ?? 0);
                   const isOver = row.negative ? diff > 0 : diff < 0;
-                  const actualColor = row.positive ? t.green : row.negative ? t.red : row.savings ? t.accent : t.text;
+                  const actualColor = row.positive ? t.green : row.negative ? t.red : row.savings ? t.yellow : t.text;
                   const diffColor = diff === 0 ? t.textMuted : (isOver && !row.neutral && !row.balance ? t.red : t.green);
 
                   return (
