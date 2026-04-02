@@ -2,23 +2,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
-
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
-
-const THEME_COLORS = {
-  dark: {
-    bg: "#050505", navBg: "rgba(5,5,5,0.92)", text: "#f8fafc", textMuted: "#9ca3af",
-    card: "rgba(255,255,255,0.03)", cardBorder: "rgba(255,255,255,0.08)",
-    accent: "#D4AF37", accentBg: "rgba(212,175,55,0.1)",
-    green: "#4ade80", red: "#f87171", warning: "#fb923c", chartGrid: "rgba(255,255,255,0.05)"
-  },
-  light: {
-    bg: "#f8fafc", navBg: "rgba(248,250,252,0.92)", text: "#0f172a", textMuted: "#64748b",
-    card: "#ffffff", cardBorder: "rgba(0,0,0,0.08)",
-    accent: "#0ea5e9", accentBg: "rgba(14,165,233,0.1)",
-    green: "#16a34a", red: "#dc2626", warning: "#d97706", chartGrid: "rgba(0,0,0,0.05)"
-  }
-};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -39,11 +23,6 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  // Globally apply background color
-  useEffect(() => {
-    document.body.style.backgroundColor = THEME_COLORS[theme].bg;
-  }, [theme]);
-
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -62,11 +41,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // Helper to safely parse JSON and catch HTML 404 errors (fixing laptop crash)
+  // Safely handle API responses to prevent the "Unexpected Token T" crash
   const handleResponse = async (res) => {
     const text = await res.text();
     if (text.includes("Not Found") || text.includes("The page c")) {
-      throw new Error("Backend connection failed. Check your API link or Render deployment.");
+      throw new Error("Backend connection failed. Please ensure your Render server is live.");
     }
     const data = JSON.parse(text);
     if (!res.ok) throw new Error(data.error || "Request failed");
@@ -116,10 +95,8 @@ export function AuthProvider({ children }) {
     return response;
   };
 
-  const t = THEME_COLORS[theme];
-
   return (
-    <AuthContext.Provider value={{ user, loading, theme, toggleTheme, t, register, login, loginWithGoogle, logout, authFetch }}>
+    <AuthContext.Provider value={{ user, loading, theme, toggleTheme, register, login, loginWithGoogle, logout, authFetch }}>
       {!loading && children}
     </AuthContext.Provider>
   );
