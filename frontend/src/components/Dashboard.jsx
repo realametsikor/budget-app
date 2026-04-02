@@ -10,6 +10,10 @@ import { useAuth } from "../context/AuthContext";
 import TransactionTable from "./TransactionTable";
 import TransactionForm  from "./TransactionForm";
 import BudgetPlanEditor from "./BudgetPlanEditor";
+import { 
+  ArrowLeft, Wallet, FileText, Plus, PieChart, Receipt,
+  ArrowUpRight, ArrowDownRight, Star, Scale
+} from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -42,9 +46,9 @@ function healthScore(s) {
 function greeting(name) {
   const h = new Date().getHours();
   const first = name?.split(" ")[0] || "there";
-  if (h < 12) return `Good morning, ${first} ☀️`;
-  if (h < 17) return `Good afternoon, ${first} 👋`;
-  return `Good evening, ${first} 🌙`;
+  if (h < 12) return `Good morning, ${first}`;
+  if (h < 17) return `Good afternoon, ${first}`;
+  return `Good evening, ${first}`;
 }
 
 export default function Dashboard() {
@@ -150,14 +154,14 @@ export default function Dashboard() {
   ];
 
   const kpiCards = [
-    { label: "Income",  value: fmt(s.income?.actual),  short: fmtShort(s.income?.actual),  color: "#4ade80", bg: "rgba(74,222,128,0.08)",   icon: "↑" },
-    { label: "Spent",   value: fmt(s.spent?.actual),   short: fmtShort(s.spent?.actual),   color: "#f87171", bg: "rgba(248,113,113,0.08)",  icon: "↓" },
-    { label: "Savings", value: fmt(s.savings?.actual), short: fmtShort(s.savings?.actual), color: "#D4AF37", bg: "rgba(212,175,55,0.08)",   icon: "★" },
+    { label: "Income",  value: fmt(s.income?.actual),  short: fmtShort(s.income?.actual),  color: "#4ade80", bg: "rgba(74,222,128,0.08)",   icon: <ArrowDownRight size={16} /> },
+    { label: "Spent",   value: fmt(s.spent?.actual),   short: fmtShort(s.spent?.actual),   color: "#f87171", bg: "rgba(248,113,113,0.08)",  icon: <ArrowUpRight size={16} /> },
+    { label: "Savings", value: fmt(s.savings?.actual), short: fmtShort(s.savings?.actual), color: "#D4AF37", bg: "rgba(212,175,55,0.08)",   icon: <Star size={14} /> },
     {
       label: "Balance", value: fmt(s.balance?.actual), short: fmtShort(s.balance?.actual),
       color: (s.balance?.actual ?? 0) >= 0 ? "#4ade80" : "#f87171",
       bg:    (s.balance?.actual ?? 0) >= 0 ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
-      icon: "⚖",
+      icon: <Scale size={14} />,
     },
   ];
 
@@ -182,13 +186,24 @@ export default function Dashboard() {
       <header style={{ background: "rgba(3,7,18,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, zIndex: 40 }}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-3">
           
-          {/* Logo (Clickable to return Home) */}
-          <div 
-            onClick={() => navigate("/")} 
-            className="flex items-center gap-2 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <span className="text-lg">💰</span>
-            <span className="hidden sm:block font-bold" style={{ color: "#D4AF37", fontSize: "1rem" }}>BudgetTracker</span>
+          {/* Nav & Logo */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button 
+              onClick={() => navigate("/")} 
+              className="p-1.5 text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 rounded-lg transition-colors flex items-center"
+              aria-label="Back to Homepage"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div 
+              onClick={() => navigate("/")} 
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <div className="w-7 h-7 rounded flex items-center justify-center bg-[#D4AF37] text-black">
+                <Wallet size={14} strokeWidth={2.5} />
+              </div>
+              <span className="hidden sm:block font-bold" style={{ color: "#D4AF37", fontSize: "1rem" }}>BudgetTracker</span>
+            </div>
           </div>
 
           {/* Month / Year */}
@@ -219,7 +234,7 @@ export default function Dashboard() {
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(212,175,55,0.1)"; e.currentTarget.style.color = "#D4AF37"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.3)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#9ca3af"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
             >
-              📋 <span>Budget Plan</span>
+              <FileText size={14} /> <span>Budget Plan</span>
             </button>
             <button
               onClick={() => setShowForm(true)}
@@ -228,8 +243,8 @@ export default function Dashboard() {
               onMouseEnter={e => e.currentTarget.style.background = "#e8c84a"}
               onMouseLeave={e => e.currentTarget.style.background = "#D4AF37"}
             >
-              <span className="text-base leading-none">+</span>
-              <span className="hidden sm:inline">Add Transaction</span>
+              <Plus size={16} className="text-black" />
+              <span className="hidden sm:inline">Transaction</span>
               <span className="sm:hidden">Add</span>
             </button>
 
@@ -250,11 +265,11 @@ export default function Dashboard() {
                     <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
                     <p className="text-xs truncate mt-0.5" style={{ color: "#6b7280" }}>{user?.email}</p>
                   </div>
-                  <button onClick={() => setShowPlan(true)} className="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "#9ca3af" }}>
-                    📋 Edit Budget Plan
+                  <button onClick={() => setShowPlan(true)} className="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5 flex items-center gap-2" style={{ color: "#9ca3af" }}>
+                    <FileText size={14} /> Edit Budget Plan
                   </button>
-                  <button onClick={logout} className="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "#f87171" }}>
-                    Sign out
+                  <button onClick={logout} className="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5 flex items-center gap-2" style={{ color: "#f87171" }}>
+                    <LogOut size={14} /> Sign out
                   </button>
                 </div>
               )}
@@ -293,7 +308,9 @@ export default function Dashboard() {
         {/* ── EMPTY STATE ── */}
         {isEmpty && (
           <div className="rounded-2xl p-10 text-center" style={{ background: "rgba(212,175,55,0.04)", border: "2px dashed rgba(212,175,55,0.2)" }}>
-            <div className="text-4xl mb-4">📊</div>
+            <div className="text-4xl mb-4 flex justify-center text-[#D4AF37]">
+               <PieChart size={40} />
+            </div>
             <h3 className="text-lg font-semibold text-white mb-2">Start your {SHORT_MONTHS[month]} budget</h3>
             <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: "#6b7280", lineHeight: 1.7 }}>
               Set your planned amounts first, then log transactions as you spend. Your cash flow will update automatically.
@@ -301,17 +318,17 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 onClick={() => setShowPlan(true)}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
                 style={{ background: "#D4AF37", color: "#030712" }}
               >
-                📋 Set Budget Plan first
+                <FileText size={16} /> Set Budget Plan first
               </button>
               <button
                 onClick={() => setShowForm(true)}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-medium"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}
               >
-                + Log a transaction
+                <Plus size={16} /> Log a transaction
               </button>
             </div>
           </div>
@@ -333,20 +350,28 @@ export default function Dashboard() {
 
         {/* ── TABS ── */}
         <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          {[["overview","📊 Overview"],["transactions","🧾 Transactions"]].map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className="px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all"
-              style={{
-                background: activeTab === id ? "rgba(212,175,55,0.15)" : "transparent",
-                color:      activeTab === id ? "#D4AF37" : "#6b7280",
-                border:     activeTab === id ? "1px solid rgba(212,175,55,0.25)" : "1px solid transparent",
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          <button
+            onClick={() => setTab("overview")}
+            className="px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all flex items-center gap-2"
+            style={{
+              background: activeTab === "overview" ? "rgba(212,175,55,0.15)" : "transparent",
+              color:      activeTab === "overview" ? "#D4AF37" : "#6b7280",
+              border:     activeTab === "overview" ? "1px solid rgba(212,175,55,0.25)" : "1px solid transparent",
+            }}
+          >
+            <PieChart size={14} /> Overview
+          </button>
+          <button
+            onClick={() => setTab("transactions")}
+            className="px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all flex items-center gap-2"
+            style={{
+              background: activeTab === "transactions" ? "rgba(212,175,55,0.15)" : "transparent",
+              color:      activeTab === "transactions" ? "#D4AF37" : "#6b7280",
+              border:     activeTab === "transactions" ? "1px solid rgba(212,175,55,0.25)" : "1px solid transparent",
+            }}
+          >
+            <Receipt size={14} /> Transactions
+          </button>
         </div>
 
         {activeTab === "overview" && (
@@ -354,7 +379,9 @@ export default function Dashboard() {
             {/* ── CASH FLOW TABLE ── */}
             <section className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <h2 className="font-semibold text-white text-sm">📊 Cash Flow — {SHORT_MONTHS[month]} {year}</h2>
+                <h2 className="font-semibold text-white text-sm flex items-center gap-2">
+                   <PieChart size={16} /> Cash Flow — {SHORT_MONTHS[month]} {year}
+                </h2>
                 <span className="text-xs" style={{ color: "#6b7280" }}>Start: <span style={{ color: "#9ca3af" }}>{fmt(s.startBalance)}</span></span>
               </div>
 
@@ -439,11 +466,11 @@ export default function Dashboard() {
             {/* ── CHARTS ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="rounded-xl p-5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <h3 className="text-sm font-semibold text-white mb-4">📈 Planned vs. Actual</h3>
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><PieChart size={16} /> Planned vs. Actual</h3>
                 <Bar data={barData} options={chartOptions} />
               </div>
               <div className="rounded-xl p-5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <h3 className="text-sm font-semibold text-white mb-4">🥧 Spending breakdown</h3>
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><PieChart size={16} /> Spending breakdown</h3>
                 {(s.spent?.actual || 0) > 0
                   ? <Doughnut data={doughnutData} options={doughnutOptions} />
                   : <div className="flex items-center justify-center h-40 text-sm" style={{ color: "#4b5563" }}>No spending logged yet</div>
@@ -455,7 +482,7 @@ export default function Dashboard() {
             {s.savingsBreakdown?.some(b => b.planned > 0 || b.actual > 0) && (
               <section className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <h2 className="font-semibold text-white text-sm">⭐ Savings & Investments</h2>
+                  <h2 className="font-semibold text-white text-sm flex items-center gap-2"><Star size={16} color="#D4AF37" /> Savings & Investments</h2>
                 </div>
                 <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                   {s.savingsBreakdown.map((item, i) => (
@@ -482,7 +509,7 @@ export default function Dashboard() {
         {activeTab === "overview" && transactions.length > 0 && (
           <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <h2 className="font-semibold text-white text-sm">🧾 Recent Transactions</h2>
+              <h2 className="font-semibold text-white text-sm flex items-center gap-2"><Receipt size={16} /> Recent Transactions</h2>
               <button onClick={() => setTab("transactions")} className="text-xs transition-colors" style={{ color: "#D4AF37" }}>
                 View all →
               </button>
@@ -494,7 +521,7 @@ export default function Dashboard() {
                     background: tx.section === "income" ? "rgba(74,222,128,0.15)" : tx.section === "savings" ? "rgba(212,175,55,0.15)" : "rgba(248,113,113,0.15)",
                     color:      tx.section === "income" ? "#4ade80" : tx.section === "savings" ? "#D4AF37" : "#f87171",
                   }}>
-                    {tx.section === "income" ? "↑" : tx.section === "savings" ? "★" : "↓"}
+                    {tx.section === "income" ? <ArrowDownRight size={14} /> : tx.section === "savings" ? <Star size={12} /> : <ArrowUpRight size={14} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{tx.description}</p>
