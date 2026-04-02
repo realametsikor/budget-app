@@ -1,6 +1,7 @@
 // src/components/BudgetPlanEditor.jsx
 import { useState, useEffect } from "react";
-import { X, Check } from "lucide-react";
+// 👇 Fixed: Added Target and Wallet to the imports
+import { X, Check, Target, Wallet } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
