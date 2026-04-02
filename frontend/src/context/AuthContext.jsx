@@ -4,10 +4,23 @@ import { createContext, useContext, useState, useEffect } from "react";
 const AuthContext = createContext();
 const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
+const THEME_COLORS = {
+  dark: { bg: "#050505" },
+  light: { bg: "#f4f4f5" }
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(localStorage.getItem("budget_theme") || "dark");
+
+  // ── FIX 1: Strictly enforce Dark Mode as the default ──
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("budget_theme");
+    if (saved === "light" || saved === "dark") return saved;
+    // If they have never visited, force dark mode
+    localStorage.setItem("budget_theme", "dark");
+    return "dark";
+  });
 
   useEffect(() => {
     const storedUser = localStorage.getItem("budget_user");
@@ -22,6 +35,12 @@ export function AuthProvider({ children }) {
     }
     setLoading(false);
   }, []);
+
+  // ── FIX 2: Paint the absolute root HTML body to stop the white mobile overscroll gap ──
+  useEffect(() => {
+    document.documentElement.style.backgroundColor = THEME_COLORS[theme].bg;
+    document.body.style.backgroundColor = THEME_COLORS[theme].bg;
+  }, [theme]);
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -41,7 +60,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // Safely handle API responses to prevent the "Unexpected Token T" crash
   const handleResponse = async (res) => {
     const text = await res.text();
     if (text.includes("Not Found") || text.includes("The page c")) {
