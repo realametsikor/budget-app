@@ -11,7 +11,7 @@ dotenv.config();
 const { Pool } = pkg;
 const app = express();
 
-// CORS Setup - Must come before routes
+// CORS Setup
 app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
@@ -287,13 +287,14 @@ app.get("/api/transactions", authenticateToken, async (req, res) => {
   }
 });
 
+// ── FIX: Added the 'type' column to satisfy the database schema ──
 app.post("/api/transactions", authenticateToken, async (req, res) => {
   const { description, amount, category, sub_category, section, transaction_date, budget_month, budget_year } = req.body;
   try {
     await pool.query(
-      `INSERT INTO transactions (user_id, description, amount, category, sub_category, section, transaction_date, budget_month, budget_year) 
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [req.user.id, description, amount, category, sub_category, section, transaction_date, budget_month, budget_year]
+      `INSERT INTO transactions (user_id, description, amount, category, sub_category, section, type, transaction_date, budget_month, budget_year) 
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [req.user.id, description, amount, category, sub_category, section, section || "expense", transaction_date, budget_month, budget_year]
     );
     res.json({ success: true });
   } catch (err) {
@@ -341,4 +342,3 @@ app.put("/api/budget-plans", authenticateToken, async (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`BudgetTracker API running on port ${PORT}`));
-
