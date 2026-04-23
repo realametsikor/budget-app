@@ -2,8 +2,7 @@
 import { useState, useEffect } from "react";
 import { X, Check, Target, Wallet } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-const API = "https://budget-app-backend-gn8r.onrender.com/api";
+import { supabase } from "../supabaseClient";
 
 const SECTIONS = {
   "Income": ["Paycheck 1", "Paycheck 2", "Paycheck 3", "Paycheck 4", "Other Income"],
@@ -18,8 +17,8 @@ const THEMES = {
   light: { overlay: "rgba(0,0,0,0.4)", card: "#ffffff", border: "rgba(0,0,0,0.1)", text: "#000", textMuted: "#64748b", accent: "#4f46e5", inputBg: "rgba(0,0,0,0.03)", green: "#16a34a" }
 };
 
-export default function BudgetPlanEditor({ month, year, onClose, authFetch }) {
-  const { theme } = useAuth();
+export default function BudgetPlanEditor({ month, year, onClose }) {
+  const { theme, user } = useAuth();
   const t = THEMES[theme || "dark"];
   
   const [plans, setPlans] = useState({});
@@ -28,24 +27,23 @@ export default function BudgetPlanEditor({ month, year, onClose, authFetch }) {
 
   useEffect(() => {
     async function load() {
+      if (!user?.id) return;
       try {
         const [sumRes, planRes] = await Promise.all([
-          authFetch(`${API}/summary?year=${year}&month=${month}`),
-          authFetch(`${API}/budget-plans?year=${year}&month=${month}`)
+          supabase.from('monthly_summaries').select('start_balance').eq('user_id', user.id).eq('budget_year', year).eq('budget_month', month).maybeSingle(),
+          supabase.from('budget_plans').select('*').eq('user_id', user.id).eq('budget_year', year).eq('budget_month', month)
         ]);
-        const sumData = await sumRes.json();
-        setStartBalance(sumData.startBalance || "0");
+        setStartBalance(sumRes.data?.start_balance || "0");
         
-        const data = await planRes.json();
         const map = {};
-        if (Array.isArray(data)) {
-          data.forEach(p => { map[p.sub_category] = p; });
+        if (planRes.data) {
+          planRes.data.forEach(p => { map[p.sub_category] = p; });
         }
         setPlans(map);
       } catch (err) { console.error(err); }
     }
     load();
-  }, [month, year, authFetch]);
+  }, [month, year, user?.id]);
 
   const handleChange = (subCat, field, val) => {
     setPlans(prev => ({
@@ -55,20 +53,34 @@ export default function BudgetPlanEditor({ month, year, onClose, authFetch }) {
   };
 
   const handleSave = async () => {
+    if (!user?.id) return;
     setSaving(true);
     try {
-      await authFetch(`${API}/monthly-summary`, {
-        method: "PUT", body: JSON.stringify({ budget_year: year, budget_month: month, start_balance: parseFloat(startBalance) || 0 })
-      });
+      await supabase.from('monthly_summaries').upsert({ 
+        user_id: user.id, budget_year: year, budget_month: month, start_balance: parseFloat(startBalance) || 0 
+      }, { onConflict: 'user_id, budget_year, budget_month' });
+
+      const plansToUpsert = [];
       for (const [sec, subs] of Object.entries(SECTIONS)) {
         for (const sub of subs) {
           const p = plans[sub];
           if (p && p.budget_amount) {
-            await authFetch(`${API}/budget-plans`, {
-              method: "PUT", body: JSON.stringify({ budget_year: year, budget_month: month, section: sec, category: sec, sub_category: sub, budget_amount: parseFloat(p.budget_amount) || 0, expected_date: p.expected_date })
+            plansToUpsert.push({
+              user_id: user.id,
+              budget_year: year,
+              budget_month: month,
+              section: sec,
+              category: sec,
+              sub_category: sub,
+              budget_amount: parseFloat(p.budget_amount) || 0,
+              expected_date: p.expected_date || null
             });
           }
         }
+      }
+      
+      if (plansToUpsert.length > 0) {
+        await supabase.from('budget_plans').upsert(plansToUpsert, { onConflict: 'user_id, budget_year, budget_month, section, sub_category' });
       }
       onClose();
     } catch (err) { console.error(err); }
