@@ -2,16 +2,15 @@
 import { useState } from "react";
 import { Search, ArrowDownRight, ArrowUpRight, Star, X, ReceiptText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-const API = "https://budget-app-backend-gn8r.onrender.com/api";
+import { supabase } from "../supabaseClient";
 
 const THEMES = {
   dark: { card: "rgba(20,20,20,0.6)", border: "rgba(255,255,255,0.08)", text: "#fff", textMuted: "#9ca3af", accent: "#D4AF37", green: "#4ade80", red: "#f87171", inputBg: "rgba(255,255,255,0.05)" },
   light: { card: "#ffffff", border: "rgba(0,0,0,0.08)", text: "#000", textMuted: "#64748b", accent: "#4f46e5", green: "#16a34a", red: "#dc2626", inputBg: "rgba(0,0,0,0.03)" }
 };
 
-export default function TransactionTable({ transactions, onDelete, month, year, authFetch }) {
-  const { theme } = useAuth();
+export default function TransactionTable({ transactions, onDelete, month, year }) {
+  const { theme, user } = useAuth();
   const t = THEMES[theme || "dark"];
 
   const [filter, setFilter] = useState("All");
@@ -35,7 +34,7 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this transaction?")) return;
     try {
-      await authFetch(`${API}/transactions/${id}`, { method: "DELETE" });
+      await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
       onDelete();
     } catch (err) { console.error("Failed to delete", err); }
   };
@@ -45,7 +44,6 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
   return (
     <div className="rounded-[2rem] border shadow-lg glass-card overflow-hidden" style={{ background: t.card, borderColor: t.border }}>
       
-      {/* Header & Controls */}
       <div className="px-6 py-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: t.border }}>
         <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: t.text }}>
           <ReceiptText size={20} color={t.accent} /> Logbook — {month} {year}
@@ -67,7 +65,6 @@ export default function TransactionTable({ transactions, onDelete, month, year, 
         </div>
       </div>
 
-      {/* List */}
       <div className="divide-y" style={{ borderColor: t.border }}>
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
