@@ -31,7 +31,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem("budget_theme", next);
   };
 
-  // Maps Supabase session data to match your existing app format
   const formatUser = (u) => {
     if (!u) return null;
     return {
@@ -42,7 +41,6 @@ export function AuthProvider({ children }) {
     };
   };
 
-  // Automatically listen for logins and logouts instantly
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(formatUser(session?.user));
