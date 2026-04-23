@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-const API = "https://budget-app-backend-gn8r.onrender.com/api";
+import { supabase } from "../supabaseClient";
 
 const SECTIONS = {
   "Income": ["Paycheck 1", "Paycheck 2", "Paycheck 3", "Paycheck 4", "Other Income"],
@@ -18,8 +17,8 @@ const THEMES = {
   light: { overlay: "rgba(0,0,0,0.4)", card: "#ffffff", border: "rgba(0,0,0,0.1)", text: "#000", textMuted: "#64748b", accent: "#4f46e5", inputBg: "rgba(0,0,0,0.03)" }
 };
 
-export default function TransactionForm({ month, year, onClose, onSaved, authFetch }) {
-  const { theme } = useAuth();
+export default function TransactionForm({ month, year, onClose, onSaved }) {
+  const { theme, user } = useAuth();
   const t = THEMES[theme || "dark"];
 
   const [date, setDate] = useState(`${year}-${String(month).padStart(2, "0")}-01`);
@@ -38,32 +37,31 @@ export default function TransactionForm({ month, year, onClose, onSaved, authFet
   const handleSave = async () => {
     setError("");
     if (!amount || isNaN(amount) || amount <= 0) return setError("Please enter a valid amount.");
+    if (!user?.id) return setError("User not authenticated.");
     setLoading(true);
     
-    // ── FIX: Database bypass. We forcefully inject "income" or "expense" so the DB accepts it ──
     const dbType = section.includes("Income") ? "income" : "expense";
 
-    try {
-      await authFetch(`${API}/transactions`, {
-        method: "POST",
-        body: JSON.stringify({
-          description: desc || "Unnamed transaction",
-          amount: parseFloat(amount),
-          category: section,
-          sub_category: subCategory,
-          section: section,
-          type: dbType, // Fixes the transactions_type_check error
-          transaction_date: date,
-          budget_month: month,
-          budget_year: year,
-        }),
-      });
+    const { error: dbError } = await supabase.from('transactions').insert([{
+      user_id: user.id,
+      description: desc || "Unnamed transaction",
+      amount: parseFloat(amount),
+      category: section,
+      sub_category: subCategory,
+      section: section,
+      type: dbType,
+      transaction_date: date,
+      budget_month: month,
+      budget_year: year,
+    }]);
+
+    setLoading(false);
+    if (dbError) {
+      setError(dbError.message);
+    } else {
       onSaved();
       onClose();
-    } catch (err) {
-      setError(err.message);
     }
-    setLoading(false);
   };
 
   return (
