@@ -3,7 +3,6 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
 const AuthContext = createContext();
-const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
 const THEME_COLORS = {
   dark: { bg: "#050505" },
@@ -14,7 +13,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Preserve your theme logic
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem("budget_theme");
     if (saved === "light" || saved === "dark") return saved;
@@ -33,7 +31,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem("budget_theme", next);
   };
 
-  // Map Supabase metadata to match what your Dashboard expects (user.name, user.avatar_url)
+  // Maps Supabase session data to match your existing app format
   const formatUser = (u) => {
     if (!u) return null;
     return {
@@ -44,6 +42,7 @@ export function AuthProvider({ children }) {
     };
   };
 
+  // Automatically listen for logins and logouts instantly
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(formatUser(session?.user));
@@ -58,29 +57,32 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const register = async (name, email, password) => {
+    const { error } = await supabase.auth.signUp({
+      email, password, options: { data: { name } }
+    });
+    if (error) throw error;
+  };
+
+  const login = async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/app' }
+    });
+    if (error) throw error;
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
-  // Preserve your authFetch so the Dashboard doesn't break, but power it with Supabase
-  const authFetch = async (url, options = {}) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers = { "Content-Type": "application/json", ...options.headers };
-    
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
-    }
-
-    const response = await fetch(url, { ...options, headers });
-    if (response.status === 401 || response.status === 403) {
-      logout();
-      throw new Error("Session expired. Please log in again.");
-    }
-    return response;
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, theme, toggleTheme, logout, authFetch }}>
+    <AuthContext.Provider value={{ user, loading, theme, toggleTheme, register, login, loginWithGoogle, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
