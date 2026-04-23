@@ -56,10 +56,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const register = async (name, email, password) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password, options: { data: { name } }
     });
     if (error) throw error;
+    return data; // Returning data so the registration page can read it
   };
 
   const login = async (email, password) => {
