@@ -9,16 +9,16 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../supabaseClient";
 import TransactionTable from "./TransactionTable";
 import TransactionForm  from "./TransactionForm";
 import BudgetPlanEditor from "./BudgetPlanEditor";
 import { 
-  ArrowLeft, Wallet, FileText, Plus, PieChart, Receipt,
-  ArrowUpRight, ArrowDownRight, Star, Scale, Activity, Sun, Moon, LogOut, Target, LayoutDashboard, DownloadCloud
+  ArrowLeft, Wallet, Plus, PieChart, Receipt,
+  ArrowUpRight, ArrowDownRight, Activity, Sun, Moon, LogOut, Target, LayoutDashboard, DownloadCloud
 } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
-const API = "https://budget-app-backend-gn8r.onrender.com/api";
 
 const MONTHS       = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -68,7 +68,7 @@ function greeting(name) {
 }
 
 export default function Dashboard() {
-  const { user, logout, authFetch, theme, toggleTheme } = useAuth();
+  const { user, logout, theme, toggleTheme } = useAuth();
   const navigate = useNavigate();
   const now = new Date();
 
@@ -86,19 +86,74 @@ export default function Dashboard() {
   const [activeTab, setTab]     = useState("overview");
 
   const fetchData = useCallback(async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
-      const [sumRes, txRes] = await Promise.all([
-        authFetch(`${API}/summary?year=${year}&month=${month}`),
-        authFetch(`${API}/transactions?year=${year}&month=${month}`),
+      const [sumRes, txRes, planRes] = await Promise.all([
+        supabase.from('monthly_summaries').select('start_balance').eq('user_id', user.id).eq('budget_year', year).eq('budget_month', month).maybeSingle(),
+        supabase.from('transactions').select('*').eq('user_id', user.id).eq('budget_year', year).eq('budget_month', month).order('transaction_date', { ascending: false }).order('id', { ascending: false }),
+        supabase.from('budget_plans').select('*').eq('user_id', user.id).eq('budget_year', year).eq('budget_month', month)
       ]);
-      const sumData = await sumRes.json();
-      const txData  = await txRes.json();
-      setSummary(sumData.error ? null : sumData);
-      setTx(Array.isArray(txData) ? txData : []);
+
+      const sumData = sumRes.data;
+      const txData = txRes.data || [];
+      const planData = planRes.data || [];
+
+      const startBalance = sumData ? parseFloat(sumData.start_balance) || 0 : 0;
+
+      const planned = { income: 0, savings: 0, bills: 0, variable: 0, debts: 0, spent: 0 };
+      planData.forEach(r => {
+        const amt = Math.abs(parseFloat(r.budget_amount) || 0);
+        const sec = (r.section || '').toLowerCase();
+        if (sec.includes('income')) planned.income += amt;
+        else if (sec.includes('saving')) planned.savings += amt;
+        else if (sec.includes('bill')) { planned.bills += amt; planned.spent += amt; }
+        else if (sec.includes('debt')) { planned.debts += amt; planned.spent += amt; }
+        else { planned.variable += amt; planned.spent += amt; }
+      });
+
+      const actual = { income: 0, savings: 0, bills: 0, variable: 0, debts: 0, spent: 0 };
+      txData.forEach(r => {
+        const amt = Math.abs(parseFloat(r.amount) || 0);
+        const sec = (r.section || '').toLowerCase();
+        if (sec.includes('income')) actual.income += amt;
+        else if (sec.includes('saving')) actual.savings += amt;
+        else if (sec.includes('bill')) { actual.bills += amt; actual.spent += amt; }
+        else if (sec.includes('debt')) { actual.debts += amt; actual.spent += amt; }
+        else { actual.variable += amt; actual.spent += amt; }
+      });
+
+      const sbMap = {};
+      planData.filter(r => (r.section || '').toLowerCase().includes('saving')).forEach(r => {
+         sbMap[r.sub_category || 'Other'] = { planned: parseFloat(r.budget_amount) || 0, actual: 0 };
+      });
+      txData.filter(r => (r.section || '').toLowerCase().includes('saving')).forEach(r => {
+         const sub = r.sub_category || 'Other';
+         if (!sbMap[sub]) sbMap[sub] = { planned: 0, actual: 0 };
+         sbMap[sub].actual += Math.abs(parseFloat(r.amount) || 0);
+      });
+      const savingsBreakdown = Object.keys(sbMap).map(k => ({ sub_category: k, planned: sbMap[k].planned, actual: sbMap[k].actual }));
+
+      setSummary({
+        year, month, startBalance,
+        income: { planned: planned.income, actual: actual.income },
+        savings: { planned: planned.savings, actual: actual.savings },
+        bills: { planned: planned.bills, actual: actual.bills },
+        debts: { planned: planned.debts, actual: actual.debts },
+        variableExpenses: { planned: planned.variable, actual: actual.variable },
+        totalExpenses: { planned: planned.spent, actual: actual.spent },
+        spent: { planned: planned.spent, actual: actual.spent },
+        balance: {
+          planned: startBalance + planned.income - planned.spent - planned.savings,
+          actual: startBalance + actual.income - actual.spent - actual.savings
+        },
+        savingsBreakdown
+      });
+      
+      setTx(txData);
     } catch (e) { console.error("Fetch error:", e); }
     setLoading(false);
-  }, [month, year, authFetch]);
+  }, [month, year, user?.id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => {
@@ -108,10 +163,8 @@ export default function Dashboard() {
     return () => document.removeEventListener("click", close);
   }, [showMenu]);
 
-  // Standard formatter for the UI (uses Cedi symbol)
   const fmt = (n) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(n ?? 0);
   
-  // Safe formatter for the PDF (uses text "GHS" to prevent the weird µ font bug)
   const pdfFmt = (n) => {
     const val = Number(n) || 0;
     return "GHS " + val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -143,7 +196,6 @@ export default function Dashboard() {
     labels: ["Bills", "Variable", "Savings", "Balance"],
     datasets: [{
       data: [ s.bills?.actual || 0, s.variableExpenses?.actual || 0, s.savings?.actual || 0, Math.max(0, (s.balance?.actual || 0)) ],
-      // Explicitly unique colors so they never match or blend
       backgroundColor: [t.red, t.blue, t.yellow, t.green], 
       borderWidth: 0, hoverOffset: 4,
     }],
@@ -479,12 +531,12 @@ export default function Dashboard() {
         )}
 
         {activeTab === "transactions" && (
-           <TransactionTable transactions={transactions} onDelete={fetchData} month={MONTHS[month]} year={year} authFetch={authFetch} />
+           <TransactionTable transactions={transactions} onDelete={fetchData} month={MONTHS[month]} year={year} />
         )}
       </main>
 
-      {showForm && <TransactionForm month={month} year={year} onClose={() => setShowForm(false)} onSaved={fetchData} authFetch={authFetch} />}
-      {showPlan  && <BudgetPlanEditor month={month} year={year} onClose={() => { setShowPlan(false); fetchData(); }} authFetch={authFetch} />}
+      {showForm && <TransactionForm month={month} year={year} onClose={() => setShowForm(false)} onSaved={fetchData} />}
+      {showPlan  && <BudgetPlanEditor month={month} year={year} onClose={() => { setShowPlan(false); fetchData(); }} />}
     </div>
   );
 }
