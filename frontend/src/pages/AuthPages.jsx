@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../supabaseClient";
 import { Wallet, Sun, Moon } from "lucide-react";
 
 const THEMES = {
@@ -21,17 +20,11 @@ const THEMES = {
 };
 
 function GoogleButton({ label = "Continue with Google", theme }) {
-  const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + '/app' }
-    });
-    if (error) alert(error.message);
-  };
-
+  const { loginWithGoogle } = useAuth();
+  
   return (
     <button 
-      onClick={handleGoogleLogin} 
+      onClick={loginWithGoogle} 
       className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl text-sm font-bold shadow-md transition-transform hover:scale-[1.02] border"
       style={{ background: theme === "dark" ? "#111" : "#fff", color: theme === "dark" ? "#fff" : "#000", borderColor: theme === "dark" ? "#333" : "#ddd" }}
     >
@@ -106,7 +99,7 @@ function AuthLayout({ children, title, subtitle }) {
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { theme } = useAuth();
+  const { register, theme } = useAuth();
   const t = THEMES[theme || "dark"];
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setErr] = useState("");
@@ -121,15 +114,12 @@ export function RegisterPage() {
     if (form.password.length < 8) return setErr("Password must be at least 8 characters.");
 
     setL(true);
-    const { error } = await supabase.auth.signUp({
-      email: form.email.trim(),
-      password: form.password,
-      options: { data: { name: form.name.trim() } }
-    });
-    setL(false);
-
-    if (error) return setErr(error.message);
-    navigate("/app");
+    try { 
+      await register(form.name.trim(), form.email.trim(), form.password); 
+      navigate("/app"); 
+    } 
+    catch (err) { setErr(err.message); } 
+    finally { setL(false); }
   };
 
   return (
@@ -162,7 +152,7 @@ export function RegisterPage() {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { theme } = useAuth();
+  const { login, theme } = useAuth();
   const t = THEMES[theme || "dark"];
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setErr] = useState("");
@@ -175,14 +165,12 @@ export function LoginPage() {
     if (!form.email.trim() || !form.password) return setErr("Email and password required.");
 
     setL(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: form.email.trim(),
-      password: form.password,
-    });
-    setL(false);
-
-    if (error) return setErr(error.message);
-    navigate("/app");
+    try { 
+      await login(form.email.trim(), form.password); 
+      navigate("/app"); 
+    } 
+    catch (err) { setErr(err.message); } 
+    finally { setL(false); }
   };
 
   return (
